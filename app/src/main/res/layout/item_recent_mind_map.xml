@@ -13,11 +13,11 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="88dp"
+            android:layout_height="120dp"
             android:background="?attr/colorSurfaceVariant">
 
             <TextView
-                android:id="@+id/centerText"
+                android:id="@+id/previewCenterText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?attr/colorPrimaryContainer"
@@ -29,6 +29,60 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/branch1Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_chip_red"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="@android:color/white"
+                app:layout_constraintBottom_toTopOf="@id/previewCenterText"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/branch2Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_chip_orange"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="@android:color/white"
+                app:layout_constraintEnd_toStartOf="@id/previewCenterText"
+                app:layout_constraintTop_toTopOf="@id/previewCenterText" />
+
+            <TextView
+                android:id="@+id/branch3Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_chip_cyan"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="@android:color/white"
+                app:layout_constraintStart_toEndOf="@id/previewCenterText"
+                app:layout_constraintTop_toTopOf="@id/previewCenterText" />
+
+            <TextView
+                android:id="@+id/branch4Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_chip_green"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                android:textColor="@android:color/white"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/previewCenterText" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <TextView

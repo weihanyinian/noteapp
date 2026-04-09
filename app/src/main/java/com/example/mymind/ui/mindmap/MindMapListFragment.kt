@@ -12,7 +12,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mymind.R
 import com.example.mymind.databinding.FragmentMindMapListBinding
@@ -53,11 +52,7 @@ class MindMapListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val isTablet = resources.configuration.smallestScreenWidthDp >= 600
         binding.mindMapRecyclerView.apply {
-            layoutManager = if (isTablet) {
-                LinearLayoutManager(requireContext())
-            } else {
-                GridLayoutManager(requireContext(), calculateSpanCount())
-            }
+            layoutManager = GridLayoutManager(requireContext(), calculateSpanCount())
             adapter = mindMapAdapter
         }
 
@@ -159,7 +154,7 @@ class MindMapListFragment : Fragment() {
 
     private fun calculateSpanCount(): Int {
         val sw = resources.configuration.smallestScreenWidthDp
-        return if (sw >= 600) 1 else 2
+        return if (sw >= 600) 4 else 2
     }
 
     override fun onDestroyView() {

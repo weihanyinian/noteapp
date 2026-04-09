@@ -8,10 +8,7 @@ import com.example.mymind.data.local.entity.MindMapEntity
 import com.example.mymind.data.local.entity.MindNodeEntity
 import com.example.mymind.data.local.entity.NoteEntity
 // MindMapWithNodes 通过全限定名在 observeMindMapWithNodes 中直接引用
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.sin
 
 class MyMindRepository(
     private val noteDao: NoteDao,
@@ -328,8 +325,8 @@ class MyMindRepository(
     /**
      * 自动布局（为没有坐标的节点生成坐标并写回数据库）。
      *
-     * 默认布局方向为“向右扩展”：将角度范围限制在右半平面 [-90°, +90°]。
-     * 这样新建导图/新增节点时，结构优先从根节点往右展开，而不是往下堆叠。
+     * 默认布局方向为“从左到右”：x 轴按层级递增，y 轴按叶子序分布。
+     * 这样新增节点时会自然向右扩展，而不是默认堆到下方。
      */
     suspend fun autoLayout(mindMapId: Long): Map<Long, Pair<Float?, Float?>> {
         val nodes = mindNodeDao.getByMindMapId(mindMapId)
@@ -342,67 +339,41 @@ class MyMindRepository(
             .groupBy { it.parentNodeId!! }
             .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
 
-        val leafCountById = HashMap<Long, Int>()
-        fun leafCount(nodeId: Long): Int {
-            leafCountById[nodeId]?.let { return it }
-            val node = nodesById[nodeId] ?: return 1
-            if (node.isCollapsed) {
-                leafCountById[nodeId] = 1
-                return 1
-            }
+        val verticalGap = 220f
+        val horizontalGap = 420f
+        val nodeWidth = 200f
+        val nodeHeight = 92f
+
+        val centerYById = HashMap<Long, Float>()
+        var cursorY = 0f
+
+        fun layoutCenterY(nodeId: Long): Float {
+            centerYById[nodeId]?.let { return it }
+            val node = nodesById[nodeId] ?: return cursorY.also { cursorY += verticalGap }
             val children = childrenByParent[nodeId].orEmpty()
-            if (children.isEmpty()) {
-                leafCountById[nodeId] = 1
-                return 1
+            val centerY = if (node.isCollapsed || children.isEmpty()) {
+                val y = cursorY
+                cursorY += verticalGap
+                y
+            } else {
+                val first = layoutCenterY(children.first().id)
+                val last = layoutCenterY(children.last().id)
+                (first + last) * 0.5f
             }
-            val sum = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
-            leafCountById[nodeId] = sum
-            return sum
+            centerYById[nodeId] = centerY
+            return centerY
         }
 
-        val angleById = HashMap<Long, Float>()
-        angleById[root.id] = 0f
-
-        fun assignAngles(parentId: Long, startAngle: Float, endAngle: Float) {
-            val parent = nodesById[parentId] ?: return
-            if (parent.isCollapsed) return
-            val children = childrenByParent[parentId].orEmpty()
-            if (children.isEmpty()) return
-            val total = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
-            var cursor = startAngle
-            children.forEach { child ->
-                val span = (endAngle - startAngle) * (leafCount(child.id).toFloat() / total.toFloat())
-                val childStart = cursor
-                val childEnd = cursor + span
-                angleById[child.id] = (childStart + childEnd) / 2f
-                cursor = childEnd
-                assignAngles(child.id, childStart, childEnd)
-            }
-        }
-
-        assignAngles(
-            parentId = root.id,
-            startAngle = (-PI / 2.0).toFloat(),
-            endAngle = (PI / 2.0).toFloat()
-        )
-
-        val rootChildren = childrenByParent[root.id].orEmpty()
-        val firstRadius = (320f + max(0, rootChildren.size - 4) * 28f).coerceAtMost(560f)
-        val radiusStep = 240f
+        layoutCenterY(root.id)
+        val rootCenterY = centerYById[root.id] ?: 0f
 
         val positions = LinkedHashMap<Long, Pair<Float, Float>>()
-        positions[root.id] = 0f to 0f
-
         val sorted = nodes.sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
         sorted.forEach { node ->
-            if (node.id == root.id) return@forEach
-            val parentAngle = node.parentNodeId?.let { angleById[it] }
-            val angle = angleById[node.id] ?: parentAngle ?: 0f
-            val depth = max(1, node.depth)
-            val radius = if (depth == 1) firstRadius else firstRadius + (depth - 1) * radiusStep
-            val x = cos(angle.toDouble()).toFloat() * radius
-            val y = sin(angle.toDouble()).toFloat() * radius
-            positions[node.id] = x to y
+            val depth = max(0, node.depth)
+            val centerX = depth * horizontalGap
+            val centerY = (centerYById[node.id] ?: rootCenterY) - rootCenterY
+            positions[node.id] = (centerX - nodeWidth * 0.5f) to (centerY - nodeHeight * 0.5f)
         }
 
         positions.forEach { (id, pos) -> mindNodeDao.updatePosition(id, pos.first, pos.second) }

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mymind.databinding.FragmentHomeDashboardBinding
 import com.example.mymind.ui.mindmap.MindMapDetailActivity
 import com.example.mymind.ui.note.NoteEditorActivity
@@ -45,14 +45,15 @@ class HomeDashboardFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val isTablet = resources.configuration.smallestScreenWidthDp >= 600
 
         binding.recentMindMaps.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = GridLayoutManager(requireContext(), if (isTablet) 2 else 1)
             adapter = mindMapAdapter
         }
 
         binding.recentNotes.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = GridLayoutManager(requireContext(), if (isTablet) 2 else 1)
             adapter = noteAdapter
         }
 

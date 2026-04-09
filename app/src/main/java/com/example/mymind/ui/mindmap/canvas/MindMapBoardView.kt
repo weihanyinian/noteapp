@@ -13,11 +13,9 @@ import android.view.ViewGroup
 import androidx.core.view.children
 import com.example.mymind.data.local.entity.MindNodeEntity
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -29,7 +27,7 @@ import kotlin.math.sqrt
  *
  * 布局策略：
  * - 当节点没有保存坐标时，自动生成一套初始坐标
- * - 默认“向右扩展”：将角度分布限制在 [-90°, +90°] 的右半平面
+ * - 默认“从左到右”：按层级向右排布，按叶子序纵向分布
  */
 class MindMapBoardView @JvmOverloads constructor(
     context: Context,
@@ -74,6 +72,16 @@ class MindMapBoardView @JvmOverloads constructor(
         strokeWidth = 2.5f * resources.displayMetrics.density
         color = 0xFF1565C0.toInt()
         pathEffect = DashPathEffect(floatArrayOf(8f * resources.displayMetrics.density, 6f * resources.displayMetrics.density), 0f)
+    }
+
+    private val summaryBracketPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        strokeWidth = 2.25f * resources.displayMetrics.density
+        style = Paint.Style.STROKE
+        color = 0xAA546E7A.toInt()
+    }
+    private val summaryTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xCC37474F.toInt()
+        textSize = 12f * resources.displayMetrics.scaledDensity
     }
 
     private val lassoPath = Path()
@@ -352,8 +360,6 @@ class MindMapBoardView @JvmOverloads constructor(
 
         val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth } ?: return
         val density = resources.displayMetrics.density
-        val baseRadius = 300f * density
-        val radiusStep = 220f * density
 
         val shouldFullLayout = nodes.none { it.id != root.id && (it.posX != null || it.posY != null) }
         if (shouldFullLayout) {
@@ -376,64 +382,57 @@ class MindMapBoardView @JvmOverloads constructor(
             .groupBy { it.parentNodeId!! }
             .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
 
-        val leafCountByNodeId = HashMap<Long, Int>()
-        fun leafCount(nodeId: Long): Int {
-            leafCountByNodeId[nodeId]?.let { return it }
-            val node = nodesById[nodeId] ?: return 1
-            if (node.isCollapsed) {
-                leafCountByNodeId[nodeId] = 1
-                return 1
-            }
-            val children = childrenByParent[nodeId].orEmpty().filter { visibleNodeIds.contains(it.id) }
-            if (children.isEmpty()) {
-                leafCountByNodeId[nodeId] = 1
-                return 1
-            }
-            val sum = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
-            leafCountByNodeId[nodeId] = sum
-            return sum
-        }
-
-        val angleByNodeId = HashMap<Long, Float>()
-        angleByNodeId[root.id] = 0f
-
         val newlyPositioned = LinkedHashSet<Long>()
 
-        fun assignAngles(parentId: Long, startAngle: Float, endAngle: Float) {
-            val parent = nodesById[parentId] ?: return
-            val children = childrenByParent[parentId].orEmpty().filter { visibleNodeIds.contains(it.id) }
-            if (children.isEmpty() || parent.isCollapsed) return
-            val total = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
-            var cursor = startAngle
-            children.forEach { child ->
-                val span = (endAngle - startAngle) * (leafCount(child.id).toFloat() / total.toFloat())
-                val childStart = cursor
-                val childEnd = cursor + span
-                val angle = (childStart + childEnd) / 2f
-                angleByNodeId[child.id] = angle
-                cursor = childEnd
-                assignAngles(child.id, childStart, childEnd)
+        val maxW = nodeViews
+            .filterValues { it.visibility == VISIBLE }
+            .values
+            .maxOfOrNull { it.measuredWidth }
+            ?: (160f * density).roundToInt()
+        val maxH = nodeViews
+            .filterValues { it.visibility == VISIBLE }
+            .values
+            .maxOfOrNull { it.measuredHeight }
+            ?: (72f * density).roundToInt()
+        val horizontalGap = maxW + (240f * density)
+        val verticalGap = maxH + (120f * density)
+
+        val centerYByNodeId = HashMap<Long, Float>()
+        var cursorY = 0f
+
+        fun layoutCenterY(nodeId: Long): Float {
+            centerYByNodeId[nodeId]?.let { return it }
+            val node = nodesById[nodeId] ?: return cursorY.also { cursorY += verticalGap }
+            val children = childrenByParent[nodeId].orEmpty().filter { visibleNodeIds.contains(it.id) }
+            val centerY = if (node.isCollapsed || children.isEmpty()) {
+                val y = cursorY
+                cursorY += verticalGap
+                y
+            } else {
+                val first = layoutCenterY(children.first().id)
+                val last = layoutCenterY(children.last().id)
+                (first + last) * 0.5f
             }
+            centerYByNodeId[nodeId] = centerY
+            return centerY
         }
 
-        val rootChildren = childrenByParent[root.id].orEmpty().filter { visibleNodeIds.contains(it.id) }
-        val firstRadius = (baseRadius + max(0, rootChildren.size - 4) * 22f * density).coerceAtMost(520f * density)
-        assignAngles(root.id, -Math.PI.toFloat() / 2f, Math.PI.toFloat() / 2f)
+        layoutCenterY(root.id)
+        val rootCenterY = centerYByNodeId[root.id] ?: 0f
 
         val depthSorted = nodes
             .filter { visibleNodeIds.contains(it.id) }
             .sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
         depthSorted.forEach { node ->
-            if (node.id == root.id) return@forEach
             if (positionByNodeId.containsKey(node.id) && !shouldFullLayout) return@forEach
 
-            val parentAngle = node.parentNodeId?.let { angleByNodeId[it] }
-            val angle = angleByNodeId[node.id] ?: parentAngle ?: 0f
-            val depth = max(1, node.depth)
-            val radius = if (depth == 1) firstRadius else firstRadius + (depth - 1) * radiusStep
-            val x = cos(angle) * radius
-            val y = sin(angle) * radius
-            positionByNodeId[node.id] = x to y
+            val view = nodeViews[node.id]
+            val w = view?.measuredWidth?.toFloat() ?: maxW.toFloat()
+            val h = view?.measuredHeight?.toFloat() ?: maxH.toFloat()
+            val depth = max(0, node.depth)
+            val centerX = depth * horizontalGap
+            val centerY = (centerYByNodeId[node.id] ?: rootCenterY) - rootCenterY
+            positionByNodeId[node.id] = (centerX - w * 0.5f) to (centerY - h * 0.5f)
             newlyPositioned.add(node.id)
         }
 
@@ -569,9 +568,44 @@ class MindMapBoardView @JvmOverloads constructor(
     override fun dispatchDraw(canvas: Canvas) {
         drawConnections(canvas)
         super.dispatchDraw(canvas)
+        drawCollapsedSummaryHints(canvas)
         drawSelectionOverlay(canvas)
         if (isLassoModeEnabled && isLassoDrawing) {
             canvas.drawPath(lassoPath, lassoPaint)
+        }
+    }
+
+    private fun drawCollapsedSummaryHints(canvas: Canvas) {
+        val density = resources.displayMetrics.density
+        val gap = 18f * density
+        val braceW = 14f * density
+
+        val childrenByParent = nodesById.values
+            .filter { it.parentNodeId != null }
+            .groupBy { it.parentNodeId!! }
+
+        nodesById.values.forEach { node ->
+            if (!node.isCollapsed) return@forEach
+            if (!visibleNodeIds.contains(node.id)) return@forEach
+            val hasChildren = childrenByParent[node.id].orEmpty().any { !it.isDeleted }
+            if (!hasChildren) return@forEach
+            val view = nodeViews[node.id] ?: return@forEach
+            if (view.visibility != VISIBLE) return@forEach
+
+            val x = view.x + view.width + gap
+            val top = view.y + 6f * density
+            val bottom = view.y + view.height - 6f * density
+            val mid = (top + bottom) * 0.5f
+
+            linePath.reset()
+            linePath.moveTo(x + braceW, top)
+            linePath.lineTo(x, top)
+            linePath.lineTo(x, bottom)
+            linePath.lineTo(x + braceW, bottom)
+            canvas.drawPath(linePath, summaryBracketPaint)
+
+            val label = "概要"
+            canvas.drawText(label, x + braceW + 10f * density, mid + summaryTextPaint.textSize * 0.35f, summaryTextPaint)
         }
     }
 

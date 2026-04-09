@@ -68,10 +68,6 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_recent -> openHome()
                 R.id.nav_my_mindmaps -> openMindMapList()
                 R.id.nav_notes -> openNoteList()
-                R.id.nav_shared -> {
-                    openSimplePage(SimplePageFragment.PAGE_SHARED)
-                    setCheckedNav(R.id.nav_shared)
-                }
                 R.id.nav_trash -> {
                     val returnDest = when (currentCheckedNavId) {
                         R.id.nav_my_mindmaps -> DEST_MINDMAPS

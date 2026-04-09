@@ -26,11 +26,30 @@ class RecentMindMapAdapter(
         private val binding: ItemRecentMindMapBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MindMapEntity) {
-            binding.centerText.text = item.rootNodeTitle
+            binding.previewCenterText.text = item.rootNodeTitle
             binding.titleText.text = item.title
+            val branchTexts = buildBranchTexts(item)
+            binding.branch1Text.text = branchTexts.getOrNull(0) ?: "分支"
+            binding.branch2Text.text = branchTexts.getOrNull(1) ?: "节点"
+            binding.branch3Text.text = branchTexts.getOrNull(2) ?: "灵感"
+            binding.branch4Text.text = branchTexts.getOrNull(3) ?: "结构"
             binding.updatedAtText.text = UiFormatters.formatTime(item.updatedAt)
             binding.root.setOnClickListener { onClick(item) }
         }
+    }
+
+    private fun buildBranchTexts(item: MindMapEntity): List<String> {
+        val base = (item.title + " " + item.rootNodeTitle)
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+        if (base.isBlank()) return emptyList()
+        val tokens = base.split(" ")
+            .flatMap { token ->
+                if (token.length <= 2) listOf(token)
+                else listOf(token.take(2), token.drop(2).take(2)).filter { it.isNotBlank() }
+            }
+            .filter { it.isNotBlank() }
+        return tokens.take(4)
     }
 
     private object Diff : DiffUtil.ItemCallback<MindMapEntity>() {

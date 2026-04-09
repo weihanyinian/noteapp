@@ -104,6 +104,21 @@ class InkCanvasView @JvmOverloads constructor(
 
     var onChanged: (() -> Unit)? = null
 
+    private var ruledEnabled: Boolean = true
+    private val ruledLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1f * resources.displayMetrics.density
+        color = 0x1A000000
+    }
+    private val marginLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f * resources.displayMetrics.density
+        color = 0x22000000
+    }
+    private val ruledSpacingPx: Float = 48f * resources.displayMetrics.density
+    private val ruledTopPaddingPx: Float = 32f * resources.displayMetrics.density
+    private val ruledLeftMarginPx: Float = 120f * resources.displayMetrics.density
+
     /** 切换当前工具（笔/橡皮/套索）。切到非套索时会清理套索绘制过程。 */
     fun setTool(tool: Tool) {
         this.tool = tool
@@ -327,6 +342,19 @@ class InkCanvasView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        if (ruledEnabled) {
+            val top = ruledTopPaddingPx
+            val spacing = ruledSpacingPx
+            val w = width.toFloat()
+            val h = height.toFloat()
+            var y = top
+            while (y <= h) {
+                canvas.drawLine(0f, y, w, y, ruledLinePaint)
+                y += spacing
+            }
+            canvas.drawLine(ruledLeftMarginPx, 0f, ruledLeftMarginPx, h, marginLinePaint)
+        }
 
         strokes.forEach { s ->
             inkPaint.color = when (brush) {
