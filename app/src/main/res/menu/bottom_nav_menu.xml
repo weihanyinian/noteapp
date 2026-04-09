@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_mind_maps"
+        android:icon="@android:drawable/ic_menu_share"
+        android:title="@string/mind_map_tab" />
+    <item
+        android:id="@+id/navigation_notes"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="@string/note_tab" />
+</menu>

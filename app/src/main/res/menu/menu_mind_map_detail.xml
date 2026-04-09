@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_layout"
+        android:icon="@drawable/ic_mm_layout"
+        android:title="布局"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_share"
+        android:icon="@drawable/ic_mm_share"
+        android:title="分享"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_undo"
+        android:icon="@drawable/ic_mm_undo"
+        android:title="撤销"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_add_node"
+        android:icon="@drawable/ic_mm_add"
+        android:title="添加"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_style"
+        android:icon="@drawable/ic_mm_style"
+        android:title="样式"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_more"
+        android:icon="@drawable/ic_mm_more"
+        android:title="更多"
+        app:showAsAction="always" />
+</menu>

@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">MyMind</string>
+    <string name="mind_map_tab">思维导图</string>
+    <string name="note_tab">笔记</string>
+    <string name="mind_map_list_title">思维导图列表</string>
+    <string name="mind_map_list_subtitle">整理主题、节点与灵感分支</string>
+    <string name="mind_map_search_hint">搜索导图标题</string>
+    <string name="note_list_title">笔记列表</string>
+    <string name="note_list_subtitle">集中管理富文本笔记与碎片记录</string>
+    <string name="note_search_hint">搜索标题或内容</string>
+    <string name="empty_notes">还没有笔记，点击右下角开始记录。</string>
+    <string name="empty_mind_maps">还没有思维导图，点击右下角创建第一张。</string>
+    <string name="empty_nodes">当前思维导图还没有节点。</string>
+    <string name="add_note">新增笔记</string>
+    <string name="add_mind_map">新增思维导图</string>
+    <string name="add_node">添加节点</string>
+    <string name="save">保存</string>
+    <string name="note_editor_title">编辑笔记</string>
+    <string name="mind_map_detail_title">思维导图详情</string>
+    <string name="note_title_hint">输入笔记标题</string>
+    <string name="mind_map_title_hint">输入导图标题</string>
+    <string name="note_editor_placeholder">输入你的笔记内容...</string>
+    <string name="note_saved">笔记已保存</string>
+    <string name="note_moved_to_trash">已移至回收站</string>
+    <string name="undo">撤销</string>
+    <string name="node_added">已添加新节点</string>
+    <string name="mind_map_preview_title">思维导图画布</string>
+    <string name="mind_map_library_ready">支持缩放、拖拽、节点编辑与笔记联动。</string>
+    <string name="mind_node_list_title">节点列表</string>
+    <string name="node_count_format">节点数量：%1$d</string>
+</resources>

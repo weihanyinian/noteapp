@@ -1,0 +1,255 @@
+package com.example.mymind.ui.mindmap.canvas
+
+import android.content.Context
+import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import android.view.ViewConfiguration
+import android.widget.FrameLayout
+
+class ZoomPanLayout @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : FrameLayout(context, attrs) {
+
+    private var scaleFactor = 1f
+    private var translationXInternal = 0f
+    private var translationYInternal = 0f
+    private val minScale = 0.5f
+    private val maxScale = 2.5f
+
+    private var oneFingerPanEnabled: Boolean = true
+    private var twoFingerPanEnabled: Boolean = true
+
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    private var activePointerId: Int = MotionEvent.INVALID_POINTER_ID
+    private var lastX = 0f
+    private var lastY = 0f
+    private var isPanning = false
+    private var isMultiPanning = false
+    private var lastMultiFocusX = 0f
+    private var lastMultiFocusY = 0f
+
+    var onTransformChanged: (() -> Unit)? = null
+
+    private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val child = getChildAt(0) ?: return false
+            val newScale = (scaleFactor * detector.scaleFactor).coerceIn(minScale, maxScale)
+            val focusX = detector.focusX
+            val focusY = detector.focusY
+
+            val scaleChange = newScale / scaleFactor
+            translationXInternal = focusX - (focusX - translationXInternal) * scaleChange
+            translationYInternal = focusY - (focusY - translationYInternal) * scaleChange
+            scaleFactor = newScale
+
+            applyTransform(child)
+            return true
+        }
+    })
+
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            reset()
+            return true
+        }
+    })
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.pointerCount > 0) {
+            val tool = ev.getToolType(0)
+            if (tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER) {
+                return false
+            }
+        }
+        if (ev.pointerCount > 1) return twoFingerPanEnabled
+        if (!oneFingerPanEnabled) return false
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                activePointerId = ev.getPointerId(0)
+                lastX = ev.x
+                lastY = ev.y
+                isPanning = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (scaleDetector.isInProgress) return true
+                val index = ev.findPointerIndex(activePointerId)
+                if (index < 0) return false
+                val x = ev.getX(index)
+                val y = ev.getY(index)
+                val dx = x - lastX
+                val dy = y - lastY
+                if (!isPanning && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) {
+                    isPanning = true
+                    lastX = x
+                    lastY = y
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                activePointerId = MotionEvent.INVALID_POINTER_ID
+                isPanning = false
+            }
+        }
+        return false
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val child = getChildAt(0) ?: return false
+        if (event.pointerCount > 0) {
+            val tool = event.getToolType(0)
+            if (tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER) {
+                return super.onTouchEvent(event)
+            }
+        }
+        val consumedGesture = gestureDetector.onTouchEvent(event)
+        val consumedScale = scaleDetector.onTouchEvent(event)
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                activePointerId = event.getPointerId(0)
+                lastX = event.x
+                lastY = event.y
+                isPanning = false
+                isMultiPanning = false
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                isPanning = false
+                if (twoFingerPanEnabled && event.pointerCount >= 2) {
+                    isMultiPanning = true
+                    lastMultiFocusX = (event.getX(0) + event.getX(1)) * 0.5f
+                    lastMultiFocusY = (event.getY(0) + event.getY(1)) * 0.5f
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (event.pointerCount >= 2 && twoFingerPanEnabled) {
+                    val focusX = (event.getX(0) + event.getX(1)) * 0.5f
+                    val focusY = (event.getY(0) + event.getY(1)) * 0.5f
+                    if (isMultiPanning) {
+                        val dx = focusX - lastMultiFocusX
+                        val dy = focusY - lastMultiFocusY
+                        translationXInternal += dx
+                        translationYInternal += dy
+                        applyTransform(child)
+                    } else {
+                        isMultiPanning = true
+                    }
+                    lastMultiFocusX = focusX
+                    lastMultiFocusY = focusY
+                } else if (oneFingerPanEnabled && !scaleDetector.isInProgress && event.pointerCount == 1) {
+                    val index = event.findPointerIndex(activePointerId)
+                    if (index >= 0) {
+                        val x = event.getX(index)
+                        val y = event.getY(index)
+                        val dx = x - lastX
+                        val dy = y - lastY
+                        translationXInternal += dx
+                        translationYInternal += dy
+                        lastX = x
+                        lastY = y
+                        isPanning = true
+                        applyTransform(child)
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                activePointerId = MotionEvent.INVALID_POINTER_ID
+                isPanning = false
+                isMultiPanning = false
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.pointerCount <= 2) {
+                    isMultiPanning = false
+                }
+            }
+        }
+
+        return consumedScale || consumedGesture || isPanning || isMultiPanning || super.onTouchEvent(event)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val child = getChildAt(0) ?: return
+        val childWidthSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        val childHeightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        child.measure(childWidthSpec, childHeightSpec)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        val child = getChildAt(0) ?: return
+        if (child.pivotX != 0f || child.pivotY != 0f) {
+            child.pivotX = 0f
+            child.pivotY = 0f
+        }
+        applyTransform(child)
+    }
+
+    fun reset() {
+        val child = getChildAt(0) ?: return
+        scaleFactor = 1f
+        translationXInternal = 0f
+        translationYInternal = 0f
+        applyTransform(child)
+    }
+
+    fun currentScale(): Float = scaleFactor
+
+    fun zoomBy(factor: Float) {
+        val child = getChildAt(0) ?: return
+        val newScale = (scaleFactor * factor).coerceIn(minScale, maxScale)
+        val focusX = width / 2f
+        val focusY = height / 2f
+        val scaleChange = newScale / scaleFactor
+        translationXInternal = focusX - (focusX - translationXInternal) * scaleChange
+        translationYInternal = focusY - (focusY - translationYInternal) * scaleChange
+        scaleFactor = newScale
+        applyTransform(child)
+    }
+
+    fun zoomTo(targetScale: Float) {
+        val child = getChildAt(0) ?: return
+        val newScale = targetScale.coerceIn(minScale, maxScale)
+        val focusX = width / 2f
+        val focusY = height / 2f
+        val scaleChange = newScale / scaleFactor
+        translationXInternal = focusX - (focusX - translationXInternal) * scaleChange
+        translationYInternal = focusY - (focusY - translationYInternal) * scaleChange
+        scaleFactor = newScale
+        applyTransform(child)
+    }
+
+    fun adjustTranslation(deltaX: Float, deltaY: Float) {
+        val child = getChildAt(0) ?: return
+        translationXInternal += deltaX
+        translationYInternal += deltaY
+        applyTransform(child)
+    }
+
+    fun centerOn(contentX: Float, contentY: Float) {
+        val child = getChildAt(0) ?: return
+        val targetX = width / 2f - contentX * scaleFactor
+        val targetY = height / 2f - contentY * scaleFactor
+        translationXInternal = targetX
+        translationYInternal = targetY
+        applyTransform(child)
+    }
+
+    fun setOneFingerPanEnabled(enabled: Boolean) {
+        oneFingerPanEnabled = enabled
+    }
+
+    fun setTwoFingerPanEnabled(enabled: Boolean) {
+        twoFingerPanEnabled = enabled
+    }
+
+    private fun applyTransform(child: android.view.View) {
+        child.scaleX = scaleFactor
+        child.scaleY = scaleFactor
+        child.translationX = translationXInternal
+        child.translationY = translationYInternal
+        onTransformChanged?.invoke()
+    }
+}

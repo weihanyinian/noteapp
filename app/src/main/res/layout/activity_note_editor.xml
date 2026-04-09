@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F2F3F5">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/topAppBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            app:menu="@menu/menu_note_editor"
+            app:navigationIcon="@android:drawable/ic_media_previous"
+            app:title="" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="18dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/metaText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="—"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="未命名笔记"
+                android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/handwritingToolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#CCF2F3F5"
+            app:cardCornerRadius="0dp"
+            app:cardElevation="0dp">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp">
+
+                <HorizontalScrollView
+                    android:id="@+id/toolScroll"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:overScrollMode="never"
+                    android:scrollbars="none"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/colorBar"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <LinearLayout
+                        android:id="@+id/toolRow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/bottomPenFountain"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="钢笔"
+                            android:src="@drawable/ic_mm_edit"
+                            app:tint="#1565C0" />
+
+                        <ImageButton
+                            android:id="@+id/bottomPenMarker"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="马克笔"
+                            android:src="@drawable/ic_mm_edit"
+                            app:tint="#2E7D32" />
+
+                        <ImageButton
+                            android:id="@+id/bottomPenPencil"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="铅笔"
+                            android:src="@drawable/ic_mm_edit"
+                            app:tint="#616161" />
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <ImageButton
+                            android:id="@+id/toolEraserPoint"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="橡皮（点擦）"
+                            android:src="@drawable/ic_note_eraser"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolEraserArea"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="橡皮（区域）"
+                            android:src="@drawable/ic_note_eraser_area"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/bottomSelect"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="选择/套索"
+                            android:src="@drawable/ic_mm_lasso"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <ImageButton
+                            android:id="@+id/toolUndo"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="撤销"
+                            android:src="@drawable/ic_mm_undo"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolRedo"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="重做"
+                            android:src="@drawable/ic_note_redo"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <ImageButton
+                            android:id="@+id/toolWidth"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="粗细"
+                            android:src="@drawable/ic_note_width"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolDeleteSelection"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="删除选中"
+                            android:src="@drawable/ic_note_delete"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolImport"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="导入"
+                            android:src="@drawable/ic_note_import"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolToggleMode"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="切换手写/文字"
+                            android:src="@drawable/ic_note_text"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <LinearLayout
+                    android:id="@+id/colorBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/colorBlack"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="9dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="#FF111827" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/colorBlue"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="9dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="#FF1565C0" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/colorRed"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="9dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="#FFD32F2F" />
+                </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <FrameLayout
+            android:id="@+id/editorContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <jp.wasabeef.richeditor.RichEditor
+                android:id="@+id/richEditor"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="16dp"
+                android:background="?attr/colorSurfaceContainerLow" />
+
+            <FrameLayout
+                android:id="@+id/handwritingContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <com.example.mymind.ui.mindmap.canvas.ZoomPanLayout
+                    android:id="@+id/inkZoomPan"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/white">
+
+                    <FrameLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="3000dp"
+                        android:minHeight="3000dp">
+
+                        <ImageView
+                            android:id="@+id/attachmentImage"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:scaleType="fitCenter"
+                            android:visibility="gone" />
+
+                        <com.example.mymind.ui.note.handwriting.InkCanvasView
+                            android:id="@+id/inkView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent" />
+                    </FrameLayout>
+                </com.example.mymind.ui.mindmap.canvas.ZoomPanLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

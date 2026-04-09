@@ -1,0 +1,737 @@
+package com.example.mymind.ui.mindmap.canvas
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.DashPathEffect
+import android.graphics.Path
+import android.graphics.Paint
+import android.graphics.RectF
+import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.ViewGroup
+import androidx.core.view.children
+import com.example.mymind.data.local.entity.MindNodeEntity
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+class MindMapBoardView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : ViewGroup(context, attrs) {
+
+    interface Listener {
+        fun onNodeSelected(node: MindNodeEntity)
+        fun onNodeDoubleTap(node: MindNodeEntity)
+        fun onNodeLongPress(node: MindNodeEntity)
+        fun onNodeMoved(nodeId: Long, fromX: Float?, fromY: Float?, toX: Float?, toY: Float?)
+        fun onBlankTap()
+    }
+
+    private val nodeViews = LinkedHashMap<Long, MindMapNodeView>()
+    private val nodesById = LinkedHashMap<Long, MindNodeEntity>()
+    private val notePreviewById = LinkedHashMap<Long, String>()
+    private val positionByNodeId = LinkedHashMap<Long, Pair<Float, Float>>()
+    private var visibleNodeIds: Set<Long> = emptySet()
+    private var layoutOffsetX: Float = 0f
+    private var layoutOffsetY: Float = 0f
+    private var isNodeDraggingEnabled: Boolean = false
+    private var isLassoModeEnabled: Boolean = false
+    private val resolvedBackgroundByNodeId = LinkedHashMap<Long, Int>()
+    private val resolvedTextColorByNodeId = LinkedHashMap<Long, Int>()
+    private val branchBaseColorByNodeId = LinkedHashMap<Long, Int>()
+
+    private var listener: Listener? = null
+    private var selectedNodeId: Long? = null
+
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        strokeWidth = 2.25f * resources.displayMetrics.density
+        style = Paint.Style.STROKE
+        color = 0xFFB0BEC5.toInt()
+    }
+
+    private var useCurvedLines: Boolean = true
+    private val linePath = Path()
+    private val selectionRect = RectF()
+    private val dashedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f * resources.displayMetrics.density
+        color = 0xFF1565C0.toInt()
+        pathEffect = DashPathEffect(floatArrayOf(8f * resources.displayMetrics.density, 6f * resources.displayMetrics.density), 0f)
+    }
+
+    private val lassoPath = Path()
+    private val lassoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f * resources.displayMetrics.density
+        color = 0xAA1565C0.toInt()
+        pathEffect = DashPathEffect(floatArrayOf(6f * resources.displayMetrics.density, 6f * resources.displayMetrics.density), 0f)
+    }
+    private val lassoPoints = ArrayList<Pair<Float, Float>>()
+    private var isLassoDrawing = false
+
+    private val blankGestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            setSelectedNode(null)
+            listener?.onBlankTap()
+            return true
+        }
+    })
+
+    init {
+        isClickable = true
+        isFocusable = true
+        clipChildren = false
+        clipToPadding = false
+    }
+
+    fun setListener(listener: Listener?) {
+        this.listener = listener
+    }
+
+    fun setUseCurvedLines(enabled: Boolean) {
+        useCurvedLines = enabled
+        invalidate()
+    }
+
+    fun setNodeDraggingEnabled(enabled: Boolean) {
+        isNodeDraggingEnabled = enabled
+    }
+
+    fun setLassoModeEnabled(enabled: Boolean) {
+        isLassoModeEnabled = enabled
+        if (!enabled) {
+            isLassoDrawing = false
+            lassoPath.reset()
+            lassoPoints.clear()
+            invalidate()
+        }
+    }
+
+    fun setSelectedNode(nodeId: Long?) {
+        if (selectedNodeId == nodeId) return
+        selectedNodeId = nodeId
+        nodeViews.forEach { (id, view) ->
+            val node = nodesById[id]
+            if (node != null) {
+                val base = branchBaseColorByNodeId[id] ?: 0xFF64B5F6.toInt()
+                val bg = resolvedBackgroundByNodeId[id] ?: resolveAutoBackground(node, base)
+                val tc = resolvedTextColorByNodeId[id] ?: resolveAutoTextColor(bg)
+                view.bind(
+                    node = node,
+                    notePreview = node.noteId?.let { notePreviewById[it] },
+                    isSelected = id == selectedNodeId,
+                    resolvedBackgroundColor = bg,
+                    resolvedTextColor = tc
+                )
+            }
+        }
+        invalidate()
+    }
+
+    fun getSelectedNodeId(): Long? = selectedNodeId
+
+    fun getNodeView(nodeId: Long): MindMapNodeView? = nodeViews[nodeId]
+
+    fun getNodeCenter(nodeId: Long): Pair<Float, Float>? {
+        val view = nodeViews[nodeId] ?: return null
+        val x = view.x + view.width / 2f
+        val y = view.y + view.height / 2f
+        return x to y
+    }
+
+    fun submit(nodes: List<MindNodeEntity>, previews: Map<Long, String>) {
+        val visibleIds = computeVisibleNodeIds(nodes)
+        visibleNodeIds = visibleIds
+        resolvedBackgroundByNodeId.clear()
+        resolvedTextColorByNodeId.clear()
+        branchBaseColorByNodeId.clear()
+
+        nodesById.clear()
+        nodes.forEach { nodesById[it.id] = it }
+
+        notePreviewById.clear()
+        previews.forEach { (k, v) -> notePreviewById[k] = v }
+
+        val existingIds = nodeViews.keys.toSet()
+        val newIds = nodes.map { it.id }.toSet()
+
+        (existingIds - newIds).forEach { removedId ->
+            val view = nodeViews.remove(removedId)
+            if (view != null) removeView(view)
+            positionByNodeId.remove(removedId)
+        }
+
+        val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth }
+        val firstLevel = if (root != null) {
+            nodes
+                .filter { it.parentNodeId == root.id }
+                .sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id })
+        } else {
+            emptyList()
+        }
+        val branchPalette = intArrayOf(
+            0xFFE57373.toInt(),
+            0xFF64B5F6.toInt(),
+            0xFF81C784.toInt(),
+            0xFFFFB74D.toInt(),
+            0xFFBA68C8.toInt(),
+            0xFF4DB6AC.toInt()
+        )
+        val branchColorByNodeId = HashMap<Long, Int>()
+        firstLevel.forEachIndexed { index, node ->
+            branchColorByNodeId[node.id] = branchPalette[index % branchPalette.size]
+        }
+
+        fun resolveBranchBaseColor(node: MindNodeEntity): Int {
+            if (node.isRoot) return 0xFF1E88E5.toInt()
+            val firstLevelAncestor = findFirstLevelAncestorId(node.id)
+            return branchColorByNodeId[firstLevelAncestor] ?: 0xFF64B5F6.toInt()
+        }
+
+        nodes.forEach { node ->
+            val view = nodeViews.getOrPut(node.id) {
+                MindMapNodeView(context).also { addView(it) }
+            }
+            val base = resolveBranchBaseColor(node)
+            branchBaseColorByNodeId[node.id] = base
+            val bg = node.backgroundColor ?: resolveAutoBackground(node, base)
+            val tc = node.textColor ?: resolveAutoTextColor(bg)
+            resolvedBackgroundByNodeId[node.id] = bg
+            resolvedTextColorByNodeId[node.id] = tc
+
+            view.bind(
+                node = node,
+                notePreview = node.noteId?.let { notePreviewById[it] },
+                isSelected = node.id == selectedNodeId,
+                resolvedBackgroundColor = bg,
+                resolvedTextColor = tc
+            )
+            view.visibility = if (visibleIds.contains(node.id) && !node.isDeleted) VISIBLE else GONE
+            attachInteractionHandler(view, node.id)
+
+            val existingPos = positionByNodeId[node.id]
+            if (existingPos == null) {
+                val posX = node.posX
+                val posY = node.posY
+                if (posX != null && posY != null) {
+                    positionByNodeId[node.id] = posX to posY
+                }
+            }
+        }
+
+        ensureAutoLayoutForMissingPositions()
+        requestLayout()
+        invalidate()
+    }
+
+    private fun computeVisibleNodeIds(nodes: List<MindNodeEntity>): Set<Long> {
+        if (nodes.isEmpty()) return emptySet()
+        val nodesById = nodes.associateBy { it.id }
+        val childrenByParent = nodes
+            .filter { it.parentNodeId != null }
+            .groupBy { it.parentNodeId!! }
+            .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
+
+        val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth } ?: return emptySet()
+        val result = LinkedHashSet<Long>()
+        val stack = ArrayDeque<Long>()
+        stack.addLast(root.id)
+        while (stack.isNotEmpty()) {
+            val id = stack.removeLast()
+            val node = nodesById[id] ?: continue
+            if (node.isDeleted) continue
+            result.add(id)
+            if (node.isCollapsed) continue
+            val children = childrenByParent[id].orEmpty()
+            for (i in children.size - 1 downTo 0) {
+                stack.addLast(children[i].id)
+            }
+        }
+        return result
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (isLassoModeEnabled) {
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return handleLassoTouch(event)
+        }
+        return blankGestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
+    }
+
+    private fun handleLassoTouch(event: MotionEvent): Boolean {
+        val x = event.x
+        val y = event.y
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                isLassoDrawing = true
+                lassoPoints.clear()
+                lassoPath.reset()
+                lassoPoints.add(x to y)
+                lassoPath.moveTo(x, y)
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!isLassoDrawing) return true
+                val last = lassoPoints.lastOrNull()
+                if (last != null) {
+                    val dx = abs(x - last.first)
+                    val dy = abs(y - last.second)
+                    if (dx + dy < 6f * resources.displayMetrics.density) return true
+                }
+                lassoPoints.add(x to y)
+                lassoPath.lineTo(x, y)
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isLassoDrawing = false
+                lassoPath.close()
+                selectFirstNodeInLasso()
+                lassoPath.reset()
+                lassoPoints.clear()
+                invalidate()
+                return true
+            }
+        }
+        return true
+    }
+
+    private fun selectFirstNodeInLasso() {
+        if (lassoPoints.size < 3) return
+        val polygon = lassoPoints.toList()
+        val found = visibleNodeIds
+            .mapNotNull { id -> nodeViews[id]?.let { id to it } }
+            .firstOrNull { (_, view) ->
+                val cx = view.x + view.width / 2f
+                val cy = view.y + view.height / 2f
+                pointInPolygon(cx, cy, polygon)
+            }
+        if (found != null) {
+            val node = nodesById[found.first]
+            setSelectedNode(found.first)
+            if (node != null) listener?.onNodeSelected(node)
+        }
+    }
+
+    private fun pointInPolygon(x: Float, y: Float, polygon: List<Pair<Float, Float>>): Boolean {
+        var inside = false
+        var j = polygon.size - 1
+        for (i in polygon.indices) {
+            val xi = polygon[i].first
+            val yi = polygon[i].second
+            val xj = polygon[j].first
+            val yj = polygon[j].second
+            val intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 0.000001f) + xi)
+            if (intersect) inside = !inside
+            j = i
+        }
+        return inside
+    }
+
+    private fun ensureAutoLayoutForMissingPositions() {
+        val nodes = nodesById.values.toList()
+        if (nodes.isEmpty()) return
+
+        val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth } ?: return
+        val density = resources.displayMetrics.density
+        val baseRadius = 300f * density
+        val radiusStep = 220f * density
+
+        val shouldFullLayout = nodes.none { it.id != root.id && (it.posX != null || it.posY != null) }
+        if (shouldFullLayout) {
+            positionByNodeId.clear()
+        }
+
+        if (!positionByNodeId.containsKey(root.id)) {
+            positionByNodeId[root.id] = 0f to 0f
+        }
+
+        val measureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        nodeViews.values.forEach { v ->
+            if (v.visibility == VISIBLE) {
+                v.measure(measureSpec, measureSpec)
+            }
+        }
+
+        val childrenByParent = nodes
+            .filter { it.parentNodeId != null }
+            .groupBy { it.parentNodeId!! }
+            .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
+
+        val leafCountByNodeId = HashMap<Long, Int>()
+        fun leafCount(nodeId: Long): Int {
+            leafCountByNodeId[nodeId]?.let { return it }
+            val node = nodesById[nodeId] ?: return 1
+            if (node.isCollapsed) {
+                leafCountByNodeId[nodeId] = 1
+                return 1
+            }
+            val children = childrenByParent[nodeId].orEmpty().filter { visibleNodeIds.contains(it.id) }
+            if (children.isEmpty()) {
+                leafCountByNodeId[nodeId] = 1
+                return 1
+            }
+            val sum = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
+            leafCountByNodeId[nodeId] = sum
+            return sum
+        }
+
+        val angleByNodeId = HashMap<Long, Float>()
+        angleByNodeId[root.id] = -Math.PI.toFloat() / 2f
+
+        val newlyPositioned = LinkedHashSet<Long>()
+
+        fun assignAngles(parentId: Long, startAngle: Float, endAngle: Float) {
+            val parent = nodesById[parentId] ?: return
+            val children = childrenByParent[parentId].orEmpty().filter { visibleNodeIds.contains(it.id) }
+            if (children.isEmpty() || parent.isCollapsed) return
+            val total = children.sumOf { leafCount(it.id) }.coerceAtLeast(1)
+            var cursor = startAngle
+            children.forEach { child ->
+                val span = (endAngle - startAngle) * (leafCount(child.id).toFloat() / total.toFloat())
+                val childStart = cursor
+                val childEnd = cursor + span
+                val angle = (childStart + childEnd) / 2f
+                angleByNodeId[child.id] = angle
+                cursor = childEnd
+                assignAngles(child.id, childStart, childEnd)
+            }
+        }
+
+        val rootChildren = childrenByParent[root.id].orEmpty().filter { visibleNodeIds.contains(it.id) }
+        val firstRadius = (baseRadius + max(0, rootChildren.size - 4) * 22f * density).coerceAtMost(520f * density)
+        assignAngles(root.id, -Math.PI.toFloat() / 2f, (3f * Math.PI.toFloat()) / 2f)
+
+        val depthSorted = nodes
+            .filter { visibleNodeIds.contains(it.id) }
+            .sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
+        depthSorted.forEach { node ->
+            if (node.id == root.id) return@forEach
+            if (positionByNodeId.containsKey(node.id) && !shouldFullLayout) return@forEach
+
+            val parentAngle = node.parentNodeId?.let { angleByNodeId[it] }
+            val angle = angleByNodeId[node.id] ?: parentAngle ?: (-Math.PI.toFloat() / 2f)
+            val depth = max(1, node.depth)
+            val radius = if (depth == 1) firstRadius else firstRadius + (depth - 1) * radiusStep
+            val x = cos(angle) * radius
+            val y = sin(angle) * radius
+            positionByNodeId[node.id] = x to y
+            newlyPositioned.add(node.id)
+        }
+
+        relaxOverlaps(iterations = 10, movableNodeIds = if (shouldFullLayout) null else newlyPositioned)
+    }
+
+    private fun attachInteractionHandler(view: MindMapNodeView, nodeId: Long) {
+        val touchSlop = 12f * resources.displayMetrics.density
+        var downRawX = 0f
+        var downRawY = 0f
+        var startX = 0f
+        var startY = 0f
+        var dragging = false
+        var fromX: Float? = null
+        var fromY: Float? = null
+
+        val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                if (dragging) return false
+                val node = nodesById[nodeId] ?: return false
+                setSelectedNode(nodeId)
+                listener?.onNodeSelected(node)
+                view.performClick()
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                val node = nodesById[nodeId] ?: return false
+                setSelectedNode(nodeId)
+                listener?.onNodeDoubleTap(node)
+                return true
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                if (dragging) return
+                val node = nodesById[nodeId] ?: return
+                setSelectedNode(nodeId)
+                listener?.onNodeLongPress(node)
+            }
+        })
+
+        view.setOnTouchListener { v, event ->
+            gestureDetector.onTouchEvent(event)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+                    startX = v.x
+                    startY = v.y
+                    dragging = false
+                    fromX = positionByNodeId[nodeId]?.first
+                    fromY = positionByNodeId[nodeId]?.second
+                    v.parent.requestDisallowInterceptTouchEvent(true)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isNodeDraggingEnabled) return@setOnTouchListener true
+                    val dx = event.rawX - downRawX
+                    val dy = event.rawY - downRawY
+                    if (!dragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
+                        dragging = true
+                    }
+                    if (dragging) {
+                        val scale = (this@MindMapBoardView.parent as? ZoomPanLayout)?.currentScale() ?: 1f
+                        val newX = startX + dx / scale
+                        val newY = startY + dy / scale
+                        positionByNodeId[nodeId] = (newX - layoutOffsetX) to (newY - layoutOffsetY)
+                        requestLayout()
+                        invalidate()
+                        true
+                    } else {
+                        true
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.parent.requestDisallowInterceptTouchEvent(false)
+                    if (dragging) {
+                        val pos = positionByNodeId[nodeId]
+                        listener?.onNodeMoved(nodeId, fromX, fromY, pos?.first, pos?.second)
+                        true
+                    } else {
+                        true
+                    }
+                }
+                else -> false
+            }
+        }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        var maxChildWidth = 0
+        var maxChildHeight = 0
+
+        children.forEach { child ->
+            measureChild(child, widthMeasureSpec, heightMeasureSpec)
+            maxChildWidth = max(maxChildWidth, child.measuredWidth)
+            maxChildHeight = max(maxChildHeight, child.measuredHeight)
+        }
+
+        var minX = 0f
+        var minY = 0f
+        var maxX = 0f
+        var maxY = 0f
+        positionByNodeId.values.forEach { (x, y) ->
+            minX = min(minX, x)
+            minY = min(minY, y)
+            maxX = max(maxX, x)
+            maxY = max(maxY, y)
+        }
+
+        val padding = 240f * resources.displayMetrics.density
+        layoutOffsetX = (padding / 2f) - minX
+        layoutOffsetY = (padding / 2f) - minY
+        val contentWidth = (maxX - minX) + maxChildWidth + padding
+        val contentHeight = (maxY - minY) + maxChildHeight + padding
+        val desiredWidth = contentWidth.roundToInt().coerceAtLeast(1600)
+        val desiredHeight = contentHeight.roundToInt().coerceAtLeast(1200)
+
+        val measuredWidth = resolveSize(desiredWidth, widthMeasureSpec)
+        val measuredHeight = resolveSize(desiredHeight, heightMeasureSpec)
+        setMeasuredDimension(measuredWidth, measuredHeight)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        nodeViews.forEach { (nodeId, view) ->
+            val pos = positionByNodeId[nodeId] ?: (0f to 0f)
+            val left = (pos.first + layoutOffsetX).roundToInt()
+            val top = (pos.second + layoutOffsetY).roundToInt()
+            view.layout(left, top, left + view.measuredWidth, top + view.measuredHeight)
+        }
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        drawConnections(canvas)
+        super.dispatchDraw(canvas)
+        drawSelectionOverlay(canvas)
+        if (isLassoModeEnabled && isLassoDrawing) {
+            canvas.drawPath(lassoPath, lassoPaint)
+        }
+    }
+
+    private fun drawSelectionOverlay(canvas: Canvas) {
+        val id = selectedNodeId ?: return
+        val view = nodeViews[id] ?: return
+        if (view.visibility != VISIBLE) return
+        selectionRect.set(view.x, view.y, view.x + view.width, view.y + view.height)
+        val r = 14f * resources.displayMetrics.density
+        canvas.drawRoundRect(selectionRect, r, r, dashedPaint)
+    }
+
+    private fun drawConnections(canvas: Canvas) {
+        nodesById.values.forEach { node ->
+            val parentId = node.parentNodeId ?: return@forEach
+            if (!visibleNodeIds.contains(node.id) || !visibleNodeIds.contains(parentId)) return@forEach
+            val childView = nodeViews[node.id] ?: return@forEach
+            val parentView = nodeViews[parentId] ?: return@forEach
+
+            val pcx = parentView.x + parentView.width / 2f
+            val pcy = parentView.y + parentView.height / 2f
+            val ccx = childView.x + childView.width / 2f
+            val ccy = childView.y + childView.height / 2f
+            val dxCenter = ccx - pcx
+            val dyCenter = ccy - pcy
+            val mostlyHorizontal = abs(dxCenter) >= abs(dyCenter)
+
+            val startX: Float
+            val startY: Float
+            val endX: Float
+            val endY: Float
+            if (mostlyHorizontal) {
+                startX = if (dxCenter >= 0) parentView.x + parentView.width else parentView.x
+                startY = pcy
+                endX = if (dxCenter >= 0) childView.x else childView.x + childView.width
+                endY = ccy
+            } else {
+                startX = pcx
+                startY = if (dyCenter >= 0) parentView.y + parentView.height else parentView.y
+                endX = ccx
+                endY = if (dyCenter >= 0) childView.y else childView.y + childView.height
+            }
+
+            val base = branchBaseColorByNodeId[node.id] ?: 0xFF64B5F6.toInt()
+            linePaint.color = (base and 0x00FFFFFF) or (0xCC shl 24)
+
+            if (useCurvedLines) {
+                linePath.reset()
+                linePath.moveTo(startX, startY)
+                val dx = endX - startX
+                val dy = endY - startY
+                if (mostlyHorizontal) {
+                    val c1x = startX + dx * 0.55f
+                    val c1y = startY
+                    val c2x = endX - dx * 0.55f
+                    val c2y = endY
+                    linePath.cubicTo(c1x, c1y, c2x, c2y, endX, endY)
+                } else {
+                    val c1x = startX
+                    val c1y = startY + dy * 0.55f
+                    val c2x = endX
+                    val c2y = endY - dy * 0.55f
+                    linePath.cubicTo(c1x, c1y, c2x, c2y, endX, endY)
+                }
+                canvas.drawPath(linePath, linePaint)
+            } else {
+                canvas.drawLine(startX, startY, endX, endY, linePaint)
+            }
+        }
+    }
+
+    private fun relaxOverlaps(iterations: Int, movableNodeIds: Set<Long>? = null) {
+        val ids = positionByNodeId.keys.toList()
+        val density = resources.displayMetrics.density
+        val padding = 14f * density
+        val sizes = HashMap<Long, Pair<Float, Float>>()
+        nodeViews.forEach { (id, v) ->
+            sizes[id] = v.measuredWidth.toFloat() to v.measuredHeight.toFloat()
+        }
+        repeat(iterations) {
+            for (i in 0 until ids.size) {
+                for (j in i + 1 until ids.size) {
+                    val aId = ids[i]
+                    val bId = ids[j]
+                    if (!visibleNodeIds.contains(aId) || !visibleNodeIds.contains(bId)) continue
+                    val ap = positionByNodeId[aId] ?: continue
+                    val bp = positionByNodeId[bId] ?: continue
+                    val asz = sizes[aId] ?: (180f * density to 70f * density)
+                    val bsz = sizes[bId] ?: (180f * density to 70f * density)
+                    val ax1 = ap.first
+                    val ay1 = ap.second
+                    val ax2 = ap.first + asz.first
+                    val ay2 = ap.second + asz.second
+                    val bx1 = bp.first
+                    val by1 = bp.second
+                    val bx2 = bp.first + bsz.first
+                    val by2 = bp.second + bsz.second
+                    val overlapX = min(ax2, bx2) - max(ax1, bx1)
+                    val overlapY = min(ay2, by2) - max(ay1, by1)
+                    if (overlapX > -padding && overlapY > -padding) {
+                        val canMoveA = movableNodeIds == null || movableNodeIds.contains(aId)
+                        val canMoveB = movableNodeIds == null || movableNodeIds.contains(bId)
+                        if (!canMoveA && !canMoveB) continue
+
+                        val axc = ax1 + asz.first / 2f
+                        val ayc = ay1 + asz.second / 2f
+                        val bxc = bx1 + bsz.first / 2f
+                        val byc = by1 + bsz.second / 2f
+                        var vx = bxc - axc
+                        var vy = byc - ayc
+                        var dist = sqrt(vx * vx + vy * vy)
+                        if (dist < 0.001f) {
+                            vx = 0f
+                            vy = 1f
+                            dist = 1f
+                        }
+                        val push = (min(overlapX, overlapY) + padding) * 0.6f
+                        val px = vx / dist * push
+                        val py = vy / dist * push
+
+                        if (canMoveA && canMoveB) {
+                            positionByNodeId[aId] = (ap.first - px * 0.5f) to (ap.second - py * 0.5f)
+                            positionByNodeId[bId] = (bp.first + px * 0.5f) to (bp.second + py * 0.5f)
+                        } else if (canMoveB) {
+                            positionByNodeId[bId] = (bp.first + px) to (bp.second + py)
+                        } else if (canMoveA) {
+                            positionByNodeId[aId] = (ap.first - px) to (ap.second - py)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun resolveAutoBackground(node: MindNodeEntity, branchBaseColor: Int): Int {
+        if (node.isRoot) return 0xFF1E88E5.toInt()
+        val depth = max(1, node.depth)
+        val factor = when (depth) {
+            1 -> 0.22f
+            2 -> 0.12f
+            else -> 0.08f
+        }
+        return mixWithWhite(branchBaseColor, factor)
+    }
+
+    private fun resolveAutoTextColor(backgroundColor: Int): Int {
+        val r = (backgroundColor shr 16) and 0xFF
+        val g = (backgroundColor shr 8) and 0xFF
+        val b = backgroundColor and 0xFF
+        val luminance = (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255f
+        return if (luminance < 0.55f) 0xFFFFFFFF.toInt() else 0xFF1F2937.toInt()
+    }
+
+    private fun findFirstLevelAncestorId(nodeId: Long): Long {
+        var current = nodesById[nodeId] ?: return nodeId
+        while (true) {
+            val parentId = current.parentNodeId ?: return current.id
+            val parent = nodesById[parentId] ?: return current.id
+            if (parent.isRoot) return current.id
+            current = parent
+        }
+    }
+
+    private fun mixWithWhite(color: Int, whiteFactor: Float): Int {
+        val f = whiteFactor.coerceIn(0f, 1f)
+        val r = (color shr 16) and 0xFF
+        val g = (color shr 8) and 0xFF
+        val b = color and 0xFF
+        val rr = (r + (255 - r) * f).toInt().coerceIn(0, 255)
+        val gg = (g + (255 - g) * f).toInt().coerceIn(0, 255)
+        val bb = (b + (255 - b) * f).toInt().coerceIn(0, 255)
+        return (0xFF shl 24) or (rr shl 16) or (gg shl 8) or bb
+    }
+}
