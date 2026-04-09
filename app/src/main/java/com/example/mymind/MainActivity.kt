@@ -14,6 +14,13 @@ import com.example.mymind.ui.home.HomeDashboardFragment
 import com.example.mymind.ui.simple.SimplePageFragment
 import com.example.mymind.ui.trash.TrashActivity
 
+/**
+ * 主界面：
+ * - Drawer 导航：最近/导图/笔记/回收站/设置等
+ * - Fragment 容器：切换不同模块页面
+ *
+ * 语言切换依赖 AppCompat 应用级 Locale；设置页切换后会重建 Activity 以刷新资源。
+ */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -59,10 +66,10 @@ class MainActivity : AppCompatActivity() {
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_recent -> openHome()
-                R.id.nav_my_mindmaps -> openMindMapList(title = "我的导图")
+                R.id.nav_my_mindmaps -> openMindMapList()
                 R.id.nav_notes -> openNoteList()
                 R.id.nav_shared -> {
-                    openSimplePage("已共享")
+                    openSimplePage(SimplePageFragment.PAGE_SHARED)
                     setCheckedNav(R.id.nav_shared)
                 }
                 R.id.nav_trash -> {
@@ -74,9 +81,9 @@ class MainActivity : AppCompatActivity() {
                     setCheckedNav(R.id.nav_trash)
                     startActivity(TrashActivity.createIntent(this, returnDestination = returnDest))
                 }
-                R.id.nav_settings -> openSimplePage("设置")
-                R.id.nav_help -> openSimplePage("帮助")
-                R.id.nav_about -> openSimplePage("关于")
+                R.id.nav_settings -> openSimplePage(SimplePageFragment.PAGE_SETTINGS)
+                R.id.nav_help -> openSimplePage(SimplePageFragment.PAGE_HELP)
+                R.id.nav_about -> openSimplePage(SimplePageFragment.PAGE_ABOUT)
             }
             binding.drawerLayout.closeDrawer(GravityCompat.START)
             true
@@ -91,27 +98,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openMindMapList(title: String) {
+    private fun openMindMapList() {
+        val title = getString(R.string.nav_my_mindmaps)
         binding.topAppBar.title = title
         switchFragment(MindMapListFragment.newInstance(title))
         setCheckedNav(R.id.nav_my_mindmaps)
     }
 
     private fun openHome() {
-        binding.topAppBar.title = "最近"
+        binding.topAppBar.title = getString(R.string.nav_recent)
         switchFragment(HomeDashboardFragment.newInstance())
         setCheckedNav(R.id.nav_recent)
     }
 
     private fun openNoteList() {
-        binding.topAppBar.title = "笔记"
+        binding.topAppBar.title = getString(R.string.nav_notes)
         switchFragment(NoteListFragment.newInstance())
         setCheckedNav(R.id.nav_notes)
     }
 
-    private fun openSimplePage(title: String) {
-        binding.topAppBar.title = title
-        switchFragment(SimplePageFragment.newInstance(title))
+    private fun openSimplePage(pageKey: String) {
+        binding.topAppBar.title = SimplePageFragment.resolveTitle(this, pageKey)
+        switchFragment(SimplePageFragment.newInstance(pageKey))
     }
 
     private fun switchFragment(fragment: Fragment) {
@@ -136,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
             DEST_MINDMAPS -> {
-                openMindMapList(title = "我的导图")
+                openMindMapList()
                 return true
             }
         }

@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">MyMind</string>
+    <string name="nav_recent">Recent</string>
+    <string name="nav_my_mindmaps">My Mind Maps</string>
+    <string name="nav_notes">Notes</string>
+    <string name="nav_shared">Shared</string>
+    <string name="nav_trash">Trash</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_help">Help</string>
+    <string name="nav_about">About</string>
+
+    <string name="in_development">In development</string>
+    <string name="settings_language">Language</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">English</string>
+
+    <string name="mind_map_tab">Mind Map</string>
+    <string name="note_tab">Notes</string>
+    <string name="mind_map_list_title">Mind Maps</string>
+    <string name="mind_map_list_subtitle">Organize topics, nodes and branches</string>
+    <string name="mind_map_search_hint">Search mind map titles</string>
+    <string name="note_list_title">Notes</string>
+    <string name="note_list_subtitle">Manage rich text notes and quick captures</string>
+    <string name="note_search_hint">Search title or content</string>
+    <string name="empty_notes">No notes yet. Tap the + button to start.</string>
+    <string name="empty_mind_maps">No mind maps yet. Tap the + button to create your first one.</string>
+    <string name="empty_nodes">This mind map has no nodes yet.</string>
+    <string name="add_note">New note</string>
+    <string name="add_mind_map">New mind map</string>
+    <string name="add_node">Add node</string>
+    <string name="save">Save</string>
+    <string name="note_editor_title">Edit note</string>
+    <string name="mind_map_detail_title">Mind map</string>
+    <string name="note_title_hint">Enter note title</string>
+    <string name="mind_map_title_hint">Enter mind map title</string>
+    <string name="note_editor_placeholder">Write your note...</string>
+    <string name="note_saved">Saved</string>
+    <string name="note_moved_to_trash">Moved to trash</string>
+    <string name="undo">Undo</string>
+    <string name="node_added">Node added</string>
+    <string name="mind_map_preview_title">Mind map canvas</string>
+    <string name="mind_map_library_ready">Supports zoom, drag, edit, and note linking.</string>
+    <string name="mind_node_list_title">Node list</string>
+    <string name="node_count_format">Nodes: %1$d</string>
+</resources>
+

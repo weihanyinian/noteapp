@@ -15,6 +15,22 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * 轻量手写画布。
+ *
+ * 数据模型：
+ * - Stroke：一条笔画，包含颜色、基准粗细与一系列带 pressure 的点
+ * - 通过 offsetX/offsetY 支持“移动选中笔画”的能力
+ *
+ * 工具：
+ * - PEN：绘制笔画（根据 pressure 做粗细变化）
+ * - ERASER_POINT：点擦（按半径命中并删除笔画）
+ * - ERASER_AREA：区域擦（用套索圈选命中笔画并删除）
+ * - LASSO：套索选择（圈选命中笔画，显示选中虚线框并可整体移动）
+ *
+ * 序列化：
+ * - exportJson/importJson 仅保存 strokes（不保存撤销栈）
+ */
 class InkCanvasView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -88,6 +104,7 @@ class InkCanvasView @JvmOverloads constructor(
 
     var onChanged: (() -> Unit)? = null
 
+    /** 切换当前工具（笔/橡皮/套索）。切到非套索时会清理套索绘制过程。 */
     fun setTool(tool: Tool) {
         this.tool = tool
         if (tool != Tool.LASSO) {
@@ -98,14 +115,17 @@ class InkCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** 切换笔刷风格（影响渲染透明度与质感）。 */
     fun setBrush(brush: Brush) {
         this.brush = brush
     }
 
+    /** 设置画笔颜色（ARGB）。 */
     fun setPenColor(color: Int) {
         penColor = color
     }
 
+    /** 设置画笔基准粗细（dp）。pressure 会在 min/max 范围内动态映射。 */
     fun setPenWidthDp(widthDp: Float) {
         val px = widthDp * resources.displayMetrics.density
         penBaseWidthPx = px
@@ -113,6 +133,7 @@ class InkCanvasView @JvmOverloads constructor(
         penMaxWidthPx = max(penMinWidthPx + 1f, px * 2.2f)
     }
 
+    /** 撤销：移除最后一条笔画并放入 undone 栈。 */
     fun undo() {
         if (strokes.isEmpty()) return
         val stroke = strokes.removeLast()
@@ -123,6 +144,7 @@ class InkCanvasView @JvmOverloads constructor(
         onChanged?.invoke()
     }
 
+    /** 重做：从 undone 栈取出并恢复到 strokes。 */
     fun redo() {
         val stroke = undone.removeLastOrNull() ?: return
         strokes.add(stroke)
@@ -137,6 +159,7 @@ class InkCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** 删除当前选中的笔画。 */
     fun deleteSelection() {
         if (selectedIds.isEmpty()) return
         val ids = selectedIds.toSet()
@@ -147,6 +170,7 @@ class InkCanvasView @JvmOverloads constructor(
         onChanged?.invoke()
     }
 
+    /** 将当前笔画序列化为 JSON 字符串（用于持久化）。 */
     fun exportJson(): String {
         val root = JSONObject()
         val arr = JSONArray()
@@ -172,6 +196,7 @@ class InkCanvasView @JvmOverloads constructor(
         return root.toString()
     }
 
+    /** 从 JSON 恢复笔画（清空现有内容与撤销栈）。 */
     fun importJson(json: String?) {
         strokes.clear()
         undone.clear()

@@ -3,11 +3,21 @@ package com.example.mymind.ui.mindmap.canvas
 import android.content.Context
 import android.util.AttributeSet
 import android.view.GestureDetector
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ViewConfiguration
 import android.widget.FrameLayout
+import kotlin.math.abs
 
+/**
+ * 可缩放/可平移的容器。
+ *
+ * 设计目标：
+ * - 触屏：支持双指缩放、单指/双指平移（可按场景开关）
+ * - 手写：触控笔/橡皮优先交给子 View（避免被容器拦截）
+ * - 电脑测试：支持鼠标滚轮缩放、右键/中键拖拽平移（不影响左键绘制）
+ */
 class ZoomPanLayout @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -30,6 +40,7 @@ class ZoomPanLayout @JvmOverloads constructor(
     private var isMultiPanning = false
     private var lastMultiFocusX = 0f
     private var lastMultiFocusY = 0f
+    private var isMousePanning = false
 
     var onTransformChanged: (() -> Unit)? = null
 
@@ -58,6 +69,11 @@ class ZoomPanLayout @JvmOverloads constructor(
     })
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.source and InputDevice.SOURCE_MOUSE == InputDevice.SOURCE_MOUSE) {
+            val isSecondaryDown = ev.buttonState and MotionEvent.BUTTON_SECONDARY != 0
+            val isTertiaryDown = ev.buttonState and MotionEvent.BUTTON_TERTIARY != 0
+            return isSecondaryDown || isTertiaryDown
+        }
         if (ev.pointerCount > 0) {
             val tool = ev.getToolType(0)
             if (tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER) {
@@ -81,7 +97,7 @@ class ZoomPanLayout @JvmOverloads constructor(
                 val y = ev.getY(index)
                 val dx = x - lastX
                 val dy = y - lastY
-                if (!isPanning && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) {
+                if (!isPanning && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                     isPanning = true
                     lastX = x
                     lastY = y
@@ -98,6 +114,39 @@ class ZoomPanLayout @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val child = getChildAt(0) ?: return false
+        if (event.source and InputDevice.SOURCE_MOUSE == InputDevice.SOURCE_MOUSE) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    val isSecondaryDown = event.buttonState and MotionEvent.BUTTON_SECONDARY != 0
+                    val isTertiaryDown = event.buttonState and MotionEvent.BUTTON_TERTIARY != 0
+                    isMousePanning = isSecondaryDown || isTertiaryDown
+                    if (isMousePanning) {
+                        lastX = event.x
+                        lastY = event.y
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (isMousePanning) {
+                        val dx = event.x - lastX
+                        val dy = event.y - lastY
+                        translationXInternal += dx
+                        translationYInternal += dy
+                        lastX = event.x
+                        lastY = event.y
+                        applyTransform(child)
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isMousePanning) {
+                        isMousePanning = false
+                        return true
+                    }
+                }
+            }
+            return super.onTouchEvent(event)
+        }
         if (event.pointerCount > 0) {
             val tool = event.getToolType(0)
             if (tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER) {
@@ -167,6 +216,20 @@ class ZoomPanLayout @JvmOverloads constructor(
         }
 
         return consumedScale || consumedGesture || isPanning || isMultiPanning || super.onTouchEvent(event)
+    }
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.source and InputDevice.SOURCE_MOUSE == InputDevice.SOURCE_MOUSE && event.action == MotionEvent.ACTION_SCROLL) {
+            val child = getChildAt(0) ?: return false
+            val scroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+            if (scroll != 0f) {
+                val step = 1.10f
+                val factor = if (scroll > 0) 1f / step else step
+                zoomByAt(factor = factor, focusX = event.x, focusY = event.y, child = child)
+                return true
+            }
+        }
+        return super.onGenericMotionEvent(event)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -243,6 +306,15 @@ class ZoomPanLayout @JvmOverloads constructor(
 
     fun setTwoFingerPanEnabled(enabled: Boolean) {
         twoFingerPanEnabled = enabled
+    }
+
+    private fun zoomByAt(factor: Float, focusX: Float, focusY: Float, child: android.view.View) {
+        val newScale = (scaleFactor * factor).coerceIn(minScale, maxScale)
+        val scaleChange = newScale / scaleFactor
+        translationXInternal = focusX - (focusX - translationXInternal) * scaleChange
+        translationYInternal = focusY - (focusY - translationYInternal) * scaleChange
+        scaleFactor = newScale
+        applyTransform(child)
     }
 
     private fun applyTransform(child: android.view.View) {

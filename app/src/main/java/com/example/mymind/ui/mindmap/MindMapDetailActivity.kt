@@ -27,6 +27,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * 思维导图详情页：
+ * - 顶部菜单：布局/分享/撤销/新增节点/样式/更多
+ * - 画布：MindMapBoardView + ZoomPanLayout（缩放/平移）
+ * - 底栏：常用操作（新增子节点、套索、自动布局、绑定笔记等）
+ */
 class MindMapDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMindMapDetailBinding

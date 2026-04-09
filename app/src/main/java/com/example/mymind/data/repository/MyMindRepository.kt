@@ -325,6 +325,12 @@ class MyMindRepository(
         mindMapDao.touch(mindMapId, System.currentTimeMillis())
     }
 
+    /**
+     * 自动布局（为没有坐标的节点生成坐标并写回数据库）。
+     *
+     * 默认布局方向为“向右扩展”：将角度范围限制在右半平面 [-90°, +90°]。
+     * 这样新建导图/新增节点时，结构优先从根节点往右展开，而不是往下堆叠。
+     */
     suspend fun autoLayout(mindMapId: Long): Map<Long, Pair<Float?, Float?>> {
         val nodes = mindNodeDao.getByMindMapId(mindMapId)
         if (nodes.isEmpty()) return emptyMap()
@@ -355,7 +361,7 @@ class MyMindRepository(
         }
 
         val angleById = HashMap<Long, Float>()
-        angleById[root.id] = (-PI / 2.0).toFloat()
+        angleById[root.id] = 0f
 
         fun assignAngles(parentId: Long, startAngle: Float, endAngle: Float) {
             val parent = nodesById[parentId] ?: return
@@ -377,7 +383,7 @@ class MyMindRepository(
         assignAngles(
             parentId = root.id,
             startAngle = (-PI / 2.0).toFloat(),
-            endAngle = (3.0 * PI / 2.0).toFloat()
+            endAngle = (PI / 2.0).toFloat()
         )
 
         val rootChildren = childrenByParent[root.id].orEmpty()
@@ -391,7 +397,7 @@ class MyMindRepository(
         sorted.forEach { node ->
             if (node.id == root.id) return@forEach
             val parentAngle = node.parentNodeId?.let { angleById[it] }
-            val angle = angleById[node.id] ?: parentAngle ?: (-PI / 2.0).toFloat()
+            val angle = angleById[node.id] ?: parentAngle ?: 0f
             val depth = max(1, node.depth)
             val radius = if (depth == 1) firstRadius else firstRadius + (depth - 1) * radiusStep
             val x = cos(angle.toDouble()).toFloat() * radius

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F2F3F5">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -53,7 +53,7 @@
             android:id="@+id/handwritingToolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="#CCF2F3F5"
+            app:cardBackgroundColor="?attr/colorSurfaceContainer"
             app:cardCornerRadius="0dp"
             app:cardElevation="0dp">
 
@@ -83,28 +83,31 @@
 
                         <ImageButton
                             android:id="@+id/bottomPenFountain"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="钢笔"
+                            android:padding="8dp"
                             android:src="@drawable/ic_mm_edit"
                             app:tint="#1565C0" />
 
                         <ImageButton
                             android:id="@+id/bottomPenMarker"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="马克笔"
+                            android:padding="8dp"
                             android:src="@drawable/ic_mm_edit"
                             app:tint="#2E7D32" />
 
                         <ImageButton
                             android:id="@+id/bottomPenPencil"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="铅笔"
+                            android:padding="8dp"
                             android:src="@drawable/ic_mm_edit"
                             app:tint="#616161" />
 
@@ -114,28 +117,31 @@
 
                         <ImageButton
                             android:id="@+id/toolEraserPoint"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="橡皮（点擦）"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_eraser"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/toolEraserArea"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="橡皮（区域）"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_eraser_area"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/bottomSelect"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="选择/套索"
+                            android:padding="8dp"
                             android:src="@drawable/ic_mm_lasso"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -145,19 +151,21 @@
 
                         <ImageButton
                             android:id="@+id/toolUndo"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="撤销"
+                            android:padding="8dp"
                             android:src="@drawable/ic_mm_undo"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/toolRedo"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="重做"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_redo"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -167,37 +175,41 @@
 
                         <ImageButton
                             android:id="@+id/toolWidth"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="粗细"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_width"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/toolDeleteSelection"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="删除选中"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_delete"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/toolImport"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="导入"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_import"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
                             android:id="@+id/toolToggleMode"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@android:color/transparent"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="切换手写/文字"
+                            android:padding="8dp"
                             android:src="@drawable/ic_note_text"
                             app:tint="?attr/colorOnSurfaceVariant" />
 

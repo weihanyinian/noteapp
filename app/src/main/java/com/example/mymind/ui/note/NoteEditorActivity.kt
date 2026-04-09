@@ -23,6 +23,17 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * 笔记编辑页：
+ * - 文字层：RichEditor（WebView 富文本）
+ * - 手写层：InkCanvasView（笔/橡皮/套索/撤销重做/导入标注）
+ * - 视图容器：ZoomPanLayout（缩放/平移）
+ *
+ * 交互策略：
+ * - 移动端：单指优先写字，不把单指拖动当成“移动画布”
+ * - 双指：保留平移/缩放用于浏览大画布
+ * - 电脑测试：鼠标滚轮缩放、右键/中键拖拽平移
+ */
 class NoteEditorActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityNoteEditorBinding
@@ -124,6 +135,7 @@ class NoteEditorActivity : AppCompatActivity() {
             setPlaceholder(getString(R.string.note_editor_placeholder))
         }
 
+        // 笔记手写层：单指用于写字（避免误触拖动画布），双指用于平移/缩放浏览。
         binding.inkZoomPan.setOneFingerPanEnabled(false)
         binding.inkZoomPan.setTwoFingerPanEnabled(true)
 

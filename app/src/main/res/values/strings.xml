@@ -1,5 +1,18 @@
 <resources>
     <string name="app_name">MyMind</string>
+    <string name="nav_recent">最近</string>
+    <string name="nav_my_mindmaps">我的导图</string>
+    <string name="nav_notes">笔记</string>
+    <string name="nav_shared">已共享</string>
+    <string name="nav_trash">回收站</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_help">帮助</string>
+    <string name="nav_about">关于</string>
+
+    <string name="in_development">开发中</string>
+    <string name="settings_language">语言</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">English</string>
     <string name="mind_map_tab">思维导图</string>
     <string name="note_tab">笔记</string>
     <string name="mind_map_list_title">思维导图列表</string>

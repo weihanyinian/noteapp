@@ -20,6 +20,17 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/**
+ * 思维导图画布（自绘 + 子 View 节点）。
+ *
+ * 职责划分：
+ * - 子节点：MindMapNodeView 负责节点卡片渲染（标题、预览、选中态）
+ * - 画布：负责节点布局、连线渲染、套索选择、节点拖拽
+ *
+ * 布局策略：
+ * - 当节点没有保存坐标时，自动生成一套初始坐标
+ * - 默认“向右扩展”：将角度分布限制在 [-90°, +90°] 的右半平面
+ */
 class MindMapBoardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -384,7 +395,7 @@ class MindMapBoardView @JvmOverloads constructor(
         }
 
         val angleByNodeId = HashMap<Long, Float>()
-        angleByNodeId[root.id] = -Math.PI.toFloat() / 2f
+        angleByNodeId[root.id] = 0f
 
         val newlyPositioned = LinkedHashSet<Long>()
 
@@ -407,7 +418,7 @@ class MindMapBoardView @JvmOverloads constructor(
 
         val rootChildren = childrenByParent[root.id].orEmpty().filter { visibleNodeIds.contains(it.id) }
         val firstRadius = (baseRadius + max(0, rootChildren.size - 4) * 22f * density).coerceAtMost(520f * density)
-        assignAngles(root.id, -Math.PI.toFloat() / 2f, (3f * Math.PI.toFloat()) / 2f)
+        assignAngles(root.id, -Math.PI.toFloat() / 2f, Math.PI.toFloat() / 2f)
 
         val depthSorted = nodes
             .filter { visibleNodeIds.contains(it.id) }
@@ -417,7 +428,7 @@ class MindMapBoardView @JvmOverloads constructor(
             if (positionByNodeId.containsKey(node.id) && !shouldFullLayout) return@forEach
 
             val parentAngle = node.parentNodeId?.let { angleByNodeId[it] }
-            val angle = angleByNodeId[node.id] ?: parentAngle ?: (-Math.PI.toFloat() / 2f)
+            val angle = angleByNodeId[node.id] ?: parentAngle ?: 0f
             val depth = max(1, node.depth)
             val radius = if (depth == 1) firstRadius else firstRadius + (depth - 1) * radiusStep
             val x = cos(angle) * radius
