@@ -22,3 +22,5 @@ local.properties
 *.p12
 *.pem
 *.key
+.workbuddy/
+.trae/
