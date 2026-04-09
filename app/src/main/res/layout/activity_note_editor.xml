@@ -81,35 +81,86 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <ImageButton
-                            android:id="@+id/bottomPenFountain"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="钢笔"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_mm_edit"
-                            app:tint="#1565C0" />
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical">
 
-                        <ImageButton
-                            android:id="@+id/bottomPenMarker"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="马克笔"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_mm_edit"
-                            app:tint="#2E7D32" />
+                            <ImageButton
+                                android:id="@+id/bottomPenFountain"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="钢笔"
+                                android:padding="8dp"
+                                android:src="@drawable/ic_pen_fountain"
+                                app:tint="#1565C0" />
 
-                        <ImageButton
-                            android:id="@+id/bottomPenPencil"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="铅笔"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_mm_edit"
-                            app:tint="#616161" />
+                            <TextView
+                                android:id="@+id/labelPenFountain"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="钢笔"
+                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                android:textColor="#1565C0"
+                                android:visibility="gone" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical">
+
+                            <ImageButton
+                                android:id="@+id/bottomPenMarker"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="马克笔"
+                                android:padding="8dp"
+                                android:src="@drawable/ic_pen_marker"
+                                app:tint="#2E7D32" />
+
+                            <TextView
+                                android:id="@+id/labelPenMarker"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="马克笔"
+                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                android:textColor="#2E7D32"
+                                android:visibility="gone" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical">
+
+                            <ImageButton
+                                android:id="@+id/bottomPenPencil"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="铅笔"
+                                android:padding="8dp"
+                                android:src="@drawable/ic_pen_pencil"
+                                app:tint="#616161" />
+
+                            <TextView
+                                android:id="@+id/labelPenPencil"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="铅笔"
+                                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                                android:textColor="#616161"
+                                android:visibility="gone" />
+                        </LinearLayout>
 
                         <View
                             android:layout_width="10dp"

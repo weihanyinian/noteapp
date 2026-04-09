@@ -9,7 +9,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mymind.MainActivity
 import com.example.mymind.ui.trash.TrashActivity
@@ -50,11 +49,7 @@ class NoteListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val isTablet = resources.configuration.smallestScreenWidthDp >= 600
         binding.noteRecyclerView.apply {
-            layoutManager = if (isTablet) {
-                GridLayoutManager(requireContext(), calculateTabletSpanCount())
-            } else {
-                LinearLayoutManager(requireContext())
-            }
+            layoutManager = GridLayoutManager(requireContext(), if (isTablet) 4 else 2)
             adapter = noteAdapter
         }
 
@@ -147,11 +142,6 @@ class NoteListFragment : Fragment() {
             .setNegativeButton("取消", null)
             .setNeutralButton("清除") { _, _ -> viewModel.setQuery("") }
             .show()
-    }
-
-    private fun calculateTabletSpanCount(): Int {
-        val sw = resources.configuration.smallestScreenWidthDp
-        return (sw / 220).coerceIn(2, 5)
     }
 
     override fun onDestroyView() {

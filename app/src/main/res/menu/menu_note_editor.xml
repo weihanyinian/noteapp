@@ -6,13 +6,4 @@
         android:icon="@drawable/ic_mm_share"
         android:title="分享"
         app:showAsAction="always" />
-    <item
-        android:id="@+id/action_more"
-        android:icon="@drawable/ic_mm_more"
-        android:title="更多"
-        app:showAsAction="always" />
-    <item
-        android:id="@+id/action_rename"
-        android:title="重命名"
-        app:showAsAction="never" />
 </menu>

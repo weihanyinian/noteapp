@@ -115,14 +115,6 @@ class NoteEditorActivity : AppCompatActivity() {
                     shareNote()
                     true
                 }
-                R.id.action_more -> {
-                    showMoreActions()
-                    true
-                }
-                R.id.action_rename -> {
-                    showRenameDialog()
-                    true
-                }
                 else -> false
             }
         }
@@ -151,16 +143,19 @@ class NoteEditorActivity : AppCompatActivity() {
             binding.inkView.setBrush(InkCanvasView.Brush.FOUNTAIN)
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
+            showSelectedPenLabel(InkCanvasView.Brush.FOUNTAIN)
         }
         binding.bottomPenMarker.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.MARKER)
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
+            showSelectedPenLabel(InkCanvasView.Brush.MARKER)
         }
         binding.bottomPenPencil.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.PENCIL)
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
+            showSelectedPenLabel(InkCanvasView.Brush.PENCIL)
         }
         binding.bottomSelect.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.LASSO)
@@ -185,6 +180,12 @@ class NoteEditorActivity : AppCompatActivity() {
         binding.colorBlack.setOnClickListener { applyInkColor(0xFF111827.toInt()) }
         binding.colorBlue.setOnClickListener { applyInkColor(0xFF1565C0.toInt()) }
         binding.colorRed.setOnClickListener { applyInkColor(0xFFD32F2F.toInt()) }
+    }
+
+    private fun showSelectedPenLabel(brush: InkCanvasView.Brush) {
+        binding.labelPenFountain.visibility = if (brush == InkCanvasView.Brush.FOUNTAIN) android.view.View.VISIBLE else android.view.View.GONE
+        binding.labelPenMarker.visibility = if (brush == InkCanvasView.Brush.MARKER) android.view.View.VISIBLE else android.view.View.GONE
+        binding.labelPenPencil.visibility = if (brush == InkCanvasView.Brush.PENCIL) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     private fun bindExistingNote() {
