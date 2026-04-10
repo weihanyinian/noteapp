@@ -72,7 +72,7 @@ class InkCanvasView @JvmOverloads constructor(
     private var penMinWidthPx: Float = 2f * resources.displayMetrics.density
     private var penMaxWidthPx: Float = 14f * resources.displayMetrics.density
 
-    private var eraserRadiusPx: Float = 18f * resources.displayMetrics.density
+    private var eraserRadiusPx: Float = 26f * resources.displayMetrics.density
 
     private val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -430,14 +430,28 @@ class InkCanvasView @JvmOverloads constructor(
 
     private fun eraseAt(x: Float, y: Float) {
         val r = eraserRadiusPx
+        val r2 = r * r
         val removed = strokes.removeAll { s ->
-            s.points.any { p ->
+            val pts = s.points
+            if (pts.isEmpty()) return@removeAll false
+            if (pts.size == 1) {
+                val p = pts[0]
                 val px = p.x + s.offsetX
                 val py = p.y + s.offsetY
                 val dx = px - x
                 val dy = py - y
-                dx * dx + dy * dy <= r * r
+                return@removeAll dx * dx + dy * dy <= r2
             }
+            for (i in 1 until pts.size) {
+                val a = pts[i - 1]
+                val b = pts[i]
+                val ax = a.x + s.offsetX
+                val ay = a.y + s.offsetY
+                val bx = b.x + s.offsetX
+                val by = b.y + s.offsetY
+                if (distancePointToSegmentSquared(px = x, py = y, ax = ax, ay = ay, bx = bx, by = by) <= r2) return@removeAll true
+            }
+            false
         }
         if (removed) {
             selectedIds.clear()
@@ -445,6 +459,34 @@ class InkCanvasView @JvmOverloads constructor(
             invalidate()
             onChanged?.invoke()
         }
+    }
+
+    private fun distancePointToSegmentSquared(
+        px: Float,
+        py: Float,
+        ax: Float,
+        ay: Float,
+        bx: Float,
+        by: Float
+    ): Float {
+        val abx = bx - ax
+        val aby = by - ay
+        val apx = px - ax
+        val apy = py - ay
+        val abLen2 = abx * abx + aby * aby
+        if (abLen2 <= 0.0001f) {
+            val dx = px - ax
+            val dy = py - ay
+            return dx * dx + dy * dy
+        }
+        var t = (apx * abx + apy * aby) / abLen2
+        if (t < 0f) t = 0f
+        if (t > 1f) t = 1f
+        val cx = ax + abx * t
+        val cy = ay + aby * t
+        val dx = px - cx
+        val dy = py - cy
+        return dx * dx + dy * dy
     }
 
     private fun beginLasso(x: Float, y: Float) {

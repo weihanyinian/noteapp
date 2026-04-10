@@ -177,6 +177,16 @@
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
+                            android:id="@+id/toolPaperStyle"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="纸张样式"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_mm_style"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
                             android:id="@+id/toolCenter"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
@@ -242,16 +252,6 @@
                             android:contentDescription="删除选中"
                             android:padding="8dp"
                             android:src="@drawable/ic_note_delete"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <ImageButton
-                            android:id="@+id/toolPaperStyle"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="纸张样式"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_mm_style"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
@@ -349,16 +349,13 @@
                     android:background="@android:color/white">
 
                     <FrameLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minWidth="3000dp"
-                        android:minHeight="3000dp">
+                        android:layout_width="3000dp"
+                        android:layout_height="3000dp">
 
                         <ImageView
                             android:id="@+id/attachmentImage"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:scaleType="fitCenter"
                             android:visibility="gone" />
 
