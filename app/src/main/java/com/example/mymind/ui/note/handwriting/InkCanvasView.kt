@@ -265,6 +265,7 @@ class InkCanvasView @JvmOverloads constructor(
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
                 lastX = x
                 lastY = y
                 if (tool == Tool.LASSO && !isStylus) {
@@ -295,6 +296,7 @@ class InkCanvasView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
                 val dx = x - lastX
                 val dy = y - lastY
                 lastX = x

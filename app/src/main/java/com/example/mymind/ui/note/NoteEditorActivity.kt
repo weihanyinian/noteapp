@@ -129,9 +129,11 @@ class NoteEditorActivity : AppCompatActivity() {
             setPlaceholder(getString(R.string.note_editor_placeholder))
         }
 
-        // 笔记手写层：单指用于写字（避免误触拖动画布），双指用于平移/缩放浏览。
+        // 笔记手写层：
+        // - 写字模式：不允许容器接管手势（避免多指/掌触被识别为平移缩放，导致无法落笔）
+        // - 手掌模式：允许单指/双指平移缩放用于浏览大画布
         binding.inkZoomPan.setOneFingerPanEnabled(false)
-        binding.inkZoomPan.setTwoFingerPanEnabled(true)
+        binding.inkZoomPan.setTwoFingerPanEnabled(false)
 
         binding.richEditor.setOnTextChangeListener {
             scheduleAutoSave()
@@ -319,11 +321,9 @@ class NoteEditorActivity : AppCompatActivity() {
     private fun setHandModeEnabled(enabled: Boolean) {
         isHandModeEnabled = enabled
         binding.inkZoomPan.setOneFingerPanEnabled(enabled)
+        binding.inkZoomPan.setTwoFingerPanEnabled(enabled)
         binding.inkView.isEnabled = !enabled
         binding.toolHand.alpha = if (enabled) 1f else 0.75f
-        if (!enabled) {
-            binding.inkZoomPan.setTwoFingerPanEnabled(true)
-        }
     }
 
     private fun showPaperStyleDialog() {
