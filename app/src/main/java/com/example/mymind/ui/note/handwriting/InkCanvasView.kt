@@ -119,6 +119,11 @@ class InkCanvasView @JvmOverloads constructor(
     private val ruledTopPaddingPx: Float = 32f * resources.displayMetrics.density
     private val ruledLeftMarginPx: Float = 120f * resources.displayMetrics.density
 
+    fun setRuledEnabled(enabled: Boolean) {
+        ruledEnabled = enabled
+        invalidate()
+    }
+
     /** 切换当前工具（笔/橡皮/套索）。切到非套索时会清理套索绘制过程。 */
     fun setTool(tool: Tool) {
         this.tool = tool

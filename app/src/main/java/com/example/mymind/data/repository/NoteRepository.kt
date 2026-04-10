@@ -26,7 +26,8 @@ class NoteRepository(
         inkJson: String? = null,
         attachmentUri: String? = null,
         attachmentMime: String? = null,
-        attachmentPageIndex: Int = 0
+        attachmentPageIndex: Int = 0,
+        paperStyle: Int = 1
     ): Long {
         val now = System.currentTimeMillis()
         val existing = noteId?.let { noteDao.getById(it) }
@@ -41,6 +42,7 @@ class NoteRepository(
                     attachmentUri = attachmentUri,
                     attachmentMime = attachmentMime,
                     attachmentPageIndex = attachmentPageIndex,
+                    paperStyle = paperStyle,
                     createdAt = now,
                     updatedAt = now
                 )
@@ -54,6 +56,7 @@ class NoteRepository(
                     attachmentUri = attachmentUri,
                     attachmentMime = attachmentMime,
                     attachmentPageIndex = attachmentPageIndex,
+                    paperStyle = paperStyle,
                     createdAt = now,
                     updatedAt = now
                 )
@@ -67,6 +70,7 @@ class NoteRepository(
                 attachmentUri = attachmentUri ?: existing.attachmentUri,
                 attachmentMime = attachmentMime ?: existing.attachmentMime,
                 attachmentPageIndex = if (attachmentUri != null) attachmentPageIndex else existing.attachmentPageIndex,
+                paperStyle = paperStyle,
                 updatedAt = now
             )
             noteDao.update(updated)

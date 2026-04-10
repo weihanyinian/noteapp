@@ -51,6 +51,8 @@ class NoteEditorActivity : AppCompatActivity() {
     private var attachmentUri: String? = null
     private var attachmentMime: String? = null
     private var attachmentPageIndex: Int = 0
+    private var paperStyle: Int = 1
+    private var isHandModeEnabled: Boolean = false
 
     private var pdfPfd: ParcelFileDescriptor? = null
     private var pdfRenderer: PdfRenderer? = null
@@ -144,38 +146,49 @@ class NoteEditorActivity : AppCompatActivity() {
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.FOUNTAIN)
+            setHandModeEnabled(false)
         }
         binding.bottomPenMarker.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.MARKER)
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.MARKER)
+            setHandModeEnabled(false)
         }
         binding.bottomPenPencil.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.PENCIL)
             binding.inkView.setTool(InkCanvasView.Tool.PEN)
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.PENCIL)
+            setHandModeEnabled(false)
         }
         binding.bottomSelect.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.LASSO)
             toggleHandwriting(show = true)
+            setHandModeEnabled(false)
         }
 
         binding.toolEraserPoint.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.ERASER_POINT)
             toggleHandwriting(show = true)
+            setHandModeEnabled(false)
         }
         binding.toolEraserArea.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.ERASER_AREA)
             toggleHandwriting(show = true)
+            setHandModeEnabled(false)
         }
         binding.toolUndo.setOnClickListener { binding.inkView.undo() }
         binding.toolRedo.setOnClickListener { binding.inkView.redo() }
         binding.toolWidth.setOnClickListener { showWidthDialog() }
         binding.toolDeleteSelection.setOnClickListener { binding.inkView.deleteSelection() }
+        binding.toolPaperStyle.setOnClickListener { showPaperStyleDialog() }
         binding.toolImport.setOnClickListener { showImportDialog() }
         binding.toolToggleMode.setOnClickListener { toggleHandwriting(show = !isHandwritingVisible) }
+        binding.toolHand.setOnClickListener {
+            toggleHandwriting(show = true)
+            setHandModeEnabled(!isHandModeEnabled)
+        }
 
         binding.colorBlack.setOnClickListener { applyInkColor(0xFF111827.toInt()) }
         binding.colorBlue.setOnClickListener { applyInkColor(0xFF1565C0.toInt()) }
@@ -202,6 +215,8 @@ class NoteEditorActivity : AppCompatActivity() {
             attachmentUri = note.attachmentUri
             attachmentMime = note.attachmentMime
             attachmentPageIndex = note.attachmentPageIndex
+            paperStyle = note.paperStyle
+            binding.inkView.setRuledEnabled(paperStyle != 0)
             if (!attachmentUri.isNullOrBlank()) {
                 toggleHandwriting(show = true)
                 if (attachmentMime == "application/pdf") {
@@ -245,7 +260,8 @@ class NoteEditorActivity : AppCompatActivity() {
             inkJson = inkJson,
             attachmentUri = attachmentUri,
             attachmentMime = attachmentMime,
-            attachmentPageIndex = attachmentPageIndex
+            attachmentPageIndex = attachmentPageIndex,
+            paperStyle = paperStyle
         )
         lastUpdatedAt = System.currentTimeMillis()
         updateMeta()
@@ -303,7 +319,33 @@ class NoteEditorActivity : AppCompatActivity() {
         binding.inkView.setPenColor(color)
         binding.inkView.setTool(InkCanvasView.Tool.PEN)
         toggleHandwriting(show = true)
+        setHandModeEnabled(false)
         scheduleAutoSave()
+    }
+
+    private fun setHandModeEnabled(enabled: Boolean) {
+        isHandModeEnabled = enabled
+        binding.inkZoomPan.setOneFingerPanEnabled(enabled)
+        binding.inkView.isEnabled = !enabled
+        binding.toolHand.alpha = if (enabled) 1f else 0.75f
+        if (!enabled) {
+            binding.inkZoomPan.setTwoFingerPanEnabled(true)
+        }
+    }
+
+    private fun showPaperStyleDialog() {
+        val items = arrayOf("空白", "笔记本（横线）")
+        val currentIndex = if (paperStyle == 0) 0 else 1
+        MaterialAlertDialogBuilder(this)
+            .setTitle("笔记样式")
+            .setSingleChoiceItems(items, currentIndex) { dialog, which ->
+                paperStyle = if (which == 0) 0 else 1
+                binding.inkView.setRuledEnabled(paperStyle != 0)
+                scheduleAutoSave()
+                dialog.dismiss()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun showImportDialog() {
@@ -335,6 +377,7 @@ class NoteEditorActivity : AppCompatActivity() {
         attachmentMime = mime
         attachmentPageIndex = 0
         toggleHandwriting(show = true)
+        setHandModeEnabled(false)
 
         if (mime == "application/pdf") {
             loadPdfPage(0)

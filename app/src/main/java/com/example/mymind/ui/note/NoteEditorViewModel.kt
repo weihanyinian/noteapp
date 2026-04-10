@@ -19,7 +19,8 @@ class NoteEditorViewModel(application: Application) : AndroidViewModel(applicati
         inkJson: String?,
         attachmentUri: String?,
         attachmentMime: String?,
-        attachmentPageIndex: Int
+        attachmentPageIndex: Int,
+        paperStyle: Int
     ): Long = repository.upsert(
         noteId = noteId,
         title = title,
@@ -27,7 +28,8 @@ class NoteEditorViewModel(application: Application) : AndroidViewModel(applicati
         inkJson = inkJson,
         attachmentUri = attachmentUri,
         attachmentMime = attachmentMime,
-        attachmentPageIndex = attachmentPageIndex
+        attachmentPageIndex = attachmentPageIndex,
+        paperStyle = paperStyle
     )
 
     suspend fun trash(noteId: Long) = repository.trash(noteId)

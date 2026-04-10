@@ -95,6 +95,17 @@
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
         <TextView
+            android:id="@+id/previewText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="—"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:visibility="invisible" />
+
+        <TextView
             android:id="@+id/updatedAtText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

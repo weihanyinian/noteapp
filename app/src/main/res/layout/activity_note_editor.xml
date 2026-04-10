@@ -196,6 +196,16 @@
                             android:src="@drawable/ic_mm_lasso"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
+                        <ImageButton
+                            android:id="@+id/toolHand"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="手掌（移动画布）"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_note_hand"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
                         <View
                             android:layout_width="10dp"
                             android:layout_height="1dp" />
@@ -242,6 +252,16 @@
                             android:contentDescription="删除选中"
                             android:padding="8dp"
                             android:src="@drawable/ic_note_delete"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <ImageButton
+                            android:id="@+id/toolPaperStyle"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="纸张样式"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_mm_style"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton

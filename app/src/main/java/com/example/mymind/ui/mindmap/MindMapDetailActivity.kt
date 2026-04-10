@@ -159,7 +159,7 @@ class MindMapDetailActivity : AppCompatActivity() {
         binding.mindMapZoomPan.onTransformChanged = {
             updateBottomBarSelectionTitle()
         }
-        binding.mindMapBoard.setNodeDraggingEnabled(true)
+        binding.mindMapBoard.setNodeDraggingEnabled(false)
         binding.mindMapBoard.setListener(object : com.example.mymind.ui.mindmap.canvas.MindMapBoardView.Listener {
             override fun onNodeSelected(node: MindNodeEntity) {
                 selectedNodeId = node.id

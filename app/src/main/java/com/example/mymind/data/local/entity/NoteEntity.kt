@@ -13,6 +13,7 @@ data class NoteEntity(
     val attachmentUri: String? = null,
     val attachmentMime: String? = null,
     val attachmentPageIndex: Int = 0,
+    val paperStyle: Int = 1,
     val isDeleted: Boolean = false,
     val deleteTime: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
