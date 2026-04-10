@@ -108,12 +108,12 @@ class InkCanvasView @JvmOverloads constructor(
     private val ruledLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f * resources.displayMetrics.density
-        color = 0x1A000000
+        color = 0x33000000
     }
     private val marginLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.5f * resources.displayMetrics.density
-        color = 0x22000000
+        color = 0x55000000
     }
     private val ruledSpacingPx: Float = 48f * resources.displayMetrics.density
     private val ruledTopPaddingPx: Float = 32f * resources.displayMetrics.density
@@ -121,7 +121,7 @@ class InkCanvasView @JvmOverloads constructor(
 
     fun setRuledEnabled(enabled: Boolean) {
         ruledEnabled = enabled
-        invalidate()
+        postInvalidateOnAnimation()
     }
 
     /** 切换当前工具（笔/橡皮/套索）。切到非套索时会清理套索绘制过程。 */

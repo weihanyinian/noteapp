@@ -177,23 +177,13 @@
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton
-                            android:id="@+id/toolEraserArea"
+                            android:id="@+id/toolCenter"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="橡皮（区域）"
+                            android:contentDescription="定位中心点"
                             android:padding="8dp"
-                            android:src="@drawable/ic_note_eraser_area"
-                            app:tint="?attr/colorOnSurfaceVariant" />
-
-                        <ImageButton
-                            android:id="@+id/bottomSelect"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="选择/套索"
-                            android:padding="8dp"
-                            android:src="@drawable/ic_mm_lasso"
+                            android:src="@drawable/ic_note_center"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <ImageButton

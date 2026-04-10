@@ -162,21 +162,14 @@ class NoteEditorActivity : AppCompatActivity() {
             showSelectedPenLabel(InkCanvasView.Brush.PENCIL)
             setHandModeEnabled(false)
         }
-        binding.bottomSelect.setOnClickListener {
-            binding.inkView.setTool(InkCanvasView.Tool.LASSO)
-            toggleHandwriting(show = true)
-            setHandModeEnabled(false)
-        }
-
         binding.toolEraserPoint.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.ERASER_POINT)
             toggleHandwriting(show = true)
             setHandModeEnabled(false)
         }
-        binding.toolEraserArea.setOnClickListener {
-            binding.inkView.setTool(InkCanvasView.Tool.ERASER_AREA)
+        binding.toolCenter.setOnClickListener {
             toggleHandwriting(show = true)
-            setHandModeEnabled(false)
+            centerInkCanvas()
         }
         binding.toolUndo.setOnClickListener { binding.inkView.undo() }
         binding.toolRedo.setOnClickListener { binding.inkView.redo() }
@@ -341,11 +334,21 @@ class NoteEditorActivity : AppCompatActivity() {
             .setSingleChoiceItems(items, currentIndex) { dialog, which ->
                 paperStyle = if (which == 0) 0 else 1
                 binding.inkView.setRuledEnabled(paperStyle != 0)
+                binding.inkZoomPan.invalidate()
                 scheduleAutoSave()
                 dialog.dismiss()
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    private fun centerInkCanvas() {
+        val content = binding.inkZoomPan.getChildAt(0) ?: return
+        content.post {
+            val cx = content.width * 0.5f
+            val cy = content.height * 0.5f
+            binding.inkZoomPan.centerOn(cx, cy)
+        }
     }
 
     private fun showImportDialog() {
