@@ -3,6 +3,7 @@ package com.example.mymind.ui.mindmap
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.PopupMenu
@@ -183,6 +184,14 @@ class MindMapDetailActivity : AppCompatActivity() {
                 viewModel.updateNodePosition(nodeId, fromX, fromY, toX, toY)
             }
 
+            override fun onNoteJumpClick(node: MindNodeEntity) {
+                if (node.noteId != null) {
+                    startActivity(NoteEditorActivity.createIntent(this@MindMapDetailActivity, node.noteId))
+                } else {
+                    showBindNoteDialog(node)
+                }
+            }
+
             override fun onBlankTap() {
                 selectedNodeId = null
                 binding.quickAddChildFab.visibility = android.view.View.GONE
@@ -312,6 +321,20 @@ class MindMapDetailActivity : AppCompatActivity() {
             if (noteId == null) return@observe
             startActivity(NoteEditorActivity.createIntent(this, noteId))
             viewModel.consumeOpenNoteEvent()
+        }
+
+        viewModel.nodeAddedEvent.observe(this) { nodeId ->
+            if (nodeId == null || nodeId <= 0) return@observe
+            selectedNodeId = nodeId
+            binding.mindMapBoard.setSelectedNode(nodeId)
+            binding.root.post { focusNode(nodeId) }
+            val node = latestNodes.firstOrNull { it.id == nodeId }
+            if (node != null) {
+                showBottomBarFor(node)
+                updateBottomBarSelectionTitle()
+                updateQuickAddChildFab()
+            }
+            viewModel.consumeNodeAddedEvent()
         }
     }
 
@@ -502,6 +525,11 @@ class MindMapDetailActivity : AppCompatActivity() {
     private fun showEditNodeDialog(node: MindNodeEntity) {
         val editText = EditText(this).apply {
             setText(node.content)
+            setSelection(text.length)
+            setSingleLine(false)
+            setHorizontallyScrolling(false)
+            minLines = 3
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             requestFocus()
         }
         MaterialAlertDialogBuilder(this)

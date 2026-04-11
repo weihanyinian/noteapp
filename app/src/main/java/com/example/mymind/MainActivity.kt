@@ -2,11 +2,10 @@ package com.example.mymind
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
-import androidx.core.view.GravityCompat
 import com.example.mymind.databinding.ActivityMainBinding
 import com.example.mymind.ui.mindmap.MindMapListFragment
 import com.example.mymind.ui.note.NoteListFragment
@@ -16,7 +15,7 @@ import com.example.mymind.ui.trash.TrashActivity
 
 /**
  * 主界面：
- * - Drawer 导航：最近/导图/笔记/回收站/设置等
+ * - 轻量导航：手机底部导航；平板侧边栏（NavigationRail）
  * - Fragment 容器：切换不同模块页面
  *
  * 语言切换依赖 AppCompat 应用级 Locale；设置页切换后会重建 Activity 以刷新资源。
@@ -24,7 +23,6 @@ import com.example.mymind.ui.trash.TrashActivity
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var drawerToggle: ActionBarDrawerToggle
     private var currentCheckedNavId: Int = R.id.nav_recent
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,13 +30,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupToolbarAndDrawer()
-        setupDrawerNavigation()
+        setupToolbar()
+        setupMainNavigation()
 
         if (savedInstanceState == null) {
             if (!handleDestinationIntent(intent)) {
-                openHome()
-                setCheckedNav(R.id.nav_recent)
+                selectDestination(R.id.nav_recent)
             }
         }
     }
@@ -49,48 +46,76 @@ class MainActivity : AppCompatActivity() {
         handleDestinationIntent(intent)
     }
 
-    private fun setupToolbarAndDrawer() {
+    private fun setupToolbar() {
         setSupportActionBar(binding.topAppBar)
-        drawerToggle = ActionBarDrawerToggle(
-            this,
-            binding.drawerLayout,
-            binding.topAppBar,
-            R.string.app_name,
-            R.string.app_name
-        )
-        binding.drawerLayout.addDrawerListener(drawerToggle)
-        drawerToggle.syncState()
+        binding.topAppBar.menu.findItem(R.id.nav_trash_top)?.isVisible = false
+
+        binding.topAppBar.setNavigationOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        binding.topAppBar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.nav_settings -> {
+                    openSimplePage(SimplePageFragment.PAGE_SETTINGS)
+                    true
+                }
+                R.id.nav_help -> {
+                    openSimplePage(SimplePageFragment.PAGE_HELP)
+                    true
+                }
+                R.id.nav_about -> {
+                    openSimplePage(SimplePageFragment.PAGE_ABOUT)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        binding.drawerView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_trash -> {
+                    startActivity(TrashActivity.createIntent(this, getDestinationString(currentCheckedNavId)))
+                    true
+                }
+                else -> false
+            }.also {
+                binding.drawerLayout.closeDrawer(GravityCompat.START)
+            }
+        }
     }
 
-    private fun setupDrawerNavigation() {
-        binding.navigationView.setNavigationItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_recent -> openHome()
-                R.id.nav_my_mindmaps -> openMindMapList()
-                R.id.nav_notes -> openNoteList()
-                R.id.nav_trash -> {
-                    val returnDest = when (currentCheckedNavId) {
-                        R.id.nav_my_mindmaps -> DEST_MINDMAPS
-                        R.id.nav_notes -> DEST_NOTES
-                        else -> DEST_RECENT
-                    }
-                    setCheckedNav(R.id.nav_trash)
-                    startActivity(TrashActivity.createIntent(this, returnDestination = returnDest))
-                }
-                R.id.nav_settings -> openSimplePage(SimplePageFragment.PAGE_SETTINGS)
-                R.id.nav_help -> openSimplePage(SimplePageFragment.PAGE_HELP)
-                R.id.nav_about -> openSimplePage(SimplePageFragment.PAGE_ABOUT)
-            }
-            binding.drawerLayout.closeDrawer(GravityCompat.START)
+    private fun getDestinationString(navId: Int): String {
+        return when (navId) {
+            R.id.nav_my_mindmaps -> DEST_MINDMAPS
+            R.id.nav_notes -> DEST_NOTES
+            else -> DEST_RECENT
+        }
+    }
+
+    private fun setupMainNavigation() {
+        val isTablet = resources.configuration.smallestScreenWidthDp >= 600
+        binding.navigationRail.visibility = if (isTablet) android.view.View.VISIBLE else android.view.View.GONE
+        binding.bottomNavigation.visibility = if (isTablet) android.view.View.GONE else android.view.View.VISIBLE
+
+        binding.bottomNavigation.menu.findItem(R.id.nav_trash)?.isVisible = false
+        binding.navigationRail.menu.findItem(R.id.nav_trash)?.isVisible = false
+
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            selectDestination(item.itemId)
+            true
+        }
+        binding.navigationRail.setOnItemSelectedListener { item ->
+            selectDestination(item.itemId)
             true
         }
     }
 
-    override fun onBackPressed() {
-        if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            binding.drawerLayout.closeDrawer(GravityCompat.START)
-        } else {
-            super.onBackPressed()
+    private fun selectDestination(navId: Int) {
+        when (navId) {
+            R.id.nav_recent -> openHome()
+            R.id.nav_my_mindmaps -> openMindMapList()
+            R.id.nav_notes -> openNoteList()
         }
     }
 
@@ -126,7 +151,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setCheckedNav(navId: Int) {
         currentCheckedNavId = navId
-        binding.navigationView.setCheckedItem(navId)
+        binding.bottomNavigation.menu.findItem(navId)?.isChecked = true
+        binding.navigationRail.menu.findItem(navId)?.isChecked = true
     }
 
     private fun handleDestinationIntent(intent: Intent): Boolean {

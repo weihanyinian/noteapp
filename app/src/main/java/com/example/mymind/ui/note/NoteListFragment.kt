@@ -5,6 +5,7 @@ import android.widget.EditText
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -21,6 +22,32 @@ class NoteListFragment : Fragment() {
     private var _binding: FragmentNoteListBinding? = null
     private val binding get() = _binding!!
     private val viewModel: NoteListViewModel by viewModels()
+
+    private val pdfPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            requireContext().contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            val intent = NoteEditorActivity.createIntent(requireContext(), null).apply {
+                putExtra("import_pdf_uri", uri.toString())
+            }
+            startActivity(intent)
+        }
+    }
+
+    private val imagePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            requireContext().contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            val intent = NoteEditorActivity.createIntent(requireContext(), null).apply {
+                putExtra("import_image_uri", uri.toString())
+            }
+            startActivity(intent)
+        }
+    }
 
     private val noteAdapter by lazy {
         NoteAdapter(
@@ -96,11 +123,7 @@ class NoteListFragment : Fragment() {
             itemTouchHelper.attachToRecyclerView(binding.noteRecyclerView)
         }
         binding.addNoteFab.setOnClickListener {
-            if (isTablet) {
-                showCreateMenu()
-            } else {
-                startActivity(NoteEditorActivity.createIntent(requireContext(), null))
-            }
+            showCreateMenu()
         }
 
         viewModel.notes.observe(viewLifecycleOwner) { notes ->
@@ -114,16 +137,16 @@ class NoteListFragment : Fragment() {
             "新建笔记",
             "新建文件夹",
             "导入 PDF",
-            "导入 PPT/Word/CAJ",
-            "导入备份笔记",
-            "快捷笔记",
-            "无限草稿"
+            "导入图片",
+            "导入备份笔记"
         )
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("新增")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> startActivity(NoteEditorActivity.createIntent(requireContext(), null))
+                    2 -> pdfPicker.launch(arrayOf("application/pdf"))
+                    3 -> imagePicker.launch(arrayOf("image/*"))
                     else -> Snackbar.make(binding.root, "待完善", Snackbar.LENGTH_SHORT).show()
                 }
             }

@@ -24,6 +24,9 @@ class MindMapDetailViewModel(application: Application) : AndroidViewModel(applic
     private val _openNoteEvent = MutableLiveData<Long?>()
     val openNoteEvent: LiveData<Long?> get() = _openNoteEvent
 
+    private val _nodeAddedEvent = MutableLiveData<Long?>()
+    val nodeAddedEvent: LiveData<Long?> get() = _nodeAddedEvent
+
     private val _canUndo = MutableLiveData(false)
     val canUndo: LiveData<Boolean> get() = _canUndo
 
@@ -59,12 +62,17 @@ class MindMapDetailViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun consumeNodeAddedEvent() {
+        _nodeAddedEvent.value = null
+    }
+
     fun addChildNode(parentNodeId: Long?) {
         val mindMapId = currentMindMapId ?: return
         viewModelScope.launch {
             val actualParentId = parentNodeId ?: repository.getRootNodeId(mindMapId) ?: return@launch
             val newNodeId = repository.addChildNode(mindMapId = mindMapId, parentNodeId = actualParentId)
             push(AddNodeCommand(nodeId = newNodeId))
+            _nodeAddedEvent.value = newNodeId
         }
     }
 

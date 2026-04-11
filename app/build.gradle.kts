@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.kapt")
 }
 
+buildDir = file("${System.getProperty("user.home")}/.mymind_build/app")
+
 android {
     namespace = "com.example.mymind"
     compileSdk = 34

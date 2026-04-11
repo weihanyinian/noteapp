@@ -24,3 +24,5 @@ local.properties
 *.key
 .workbuddy/
 .trae/
+build_app/
+build_app2/

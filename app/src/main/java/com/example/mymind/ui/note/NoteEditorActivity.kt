@@ -18,8 +18,10 @@ import com.example.mymind.ui.note.handwriting.InkCanvasView
 import com.example.mymind.util.UiFormatters
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
 
@@ -88,6 +90,13 @@ class NoteEditorActivity : AppCompatActivity() {
             isReadyForAutoSave = true
             if (noteId == null) {
                 hasInitialContent = true
+                val importPdfUri = intent.getStringExtra("import_pdf_uri")
+                val importImageUri = intent.getStringExtra("import_image_uri")
+                if (importPdfUri != null) {
+                    onDocumentPicked(importPdfUri, "application/pdf")
+                } else if (importImageUri != null) {
+                    onDocumentPicked(importImageUri, "image/*")
+                }
             }
         }
     }
@@ -129,11 +138,7 @@ class NoteEditorActivity : AppCompatActivity() {
             setPlaceholder(getString(R.string.note_editor_placeholder))
         }
 
-        // 笔记手写层：
-        // - 写字模式：不允许容器接管手势（避免多指/掌触被识别为平移缩放，导致无法落笔）
-        // - 手掌模式：允许单指/双指平移缩放用于浏览大画布
-        binding.inkZoomPan.setOneFingerPanEnabled(false)
-        binding.inkZoomPan.setTwoFingerPanEnabled(false)
+        binding.inkView.setInteractionMode(InkCanvasView.InteractionMode.DRAW)
 
         binding.richEditor.setOnTextChangeListener {
             scheduleAutoSave()
@@ -149,6 +154,7 @@ class NoteEditorActivity : AppCompatActivity() {
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.FOUNTAIN)
             setHandModeEnabled(false)
+            setEraserSizeVisible(false)
         }
         binding.bottomPenMarker.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.MARKER)
@@ -156,6 +162,7 @@ class NoteEditorActivity : AppCompatActivity() {
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.MARKER)
             setHandModeEnabled(false)
+            setEraserSizeVisible(false)
         }
         binding.bottomPenPencil.setOnClickListener {
             binding.inkView.setBrush(InkCanvasView.Brush.PENCIL)
@@ -163,20 +170,47 @@ class NoteEditorActivity : AppCompatActivity() {
             toggleHandwriting(show = true)
             showSelectedPenLabel(InkCanvasView.Brush.PENCIL)
             setHandModeEnabled(false)
+            setEraserSizeVisible(false)
+        }
+        binding.bottomPenHighlighter.setOnClickListener {
+            binding.inkView.setBrush(InkCanvasView.Brush.HIGHLIGHTER)
+            binding.inkView.setTool(InkCanvasView.Tool.PEN)
+            binding.inkView.setPenColor(0xFFFFEB3B.toInt())
+            binding.inkView.setPenWidthDp(10f)
+            toggleHandwriting(show = true)
+            showSelectedPenLabel(InkCanvasView.Brush.HIGHLIGHTER)
+            setHandModeEnabled(false)
+            setEraserSizeVisible(false)
         }
         binding.toolEraserPoint.setOnClickListener {
             binding.inkView.setTool(InkCanvasView.Tool.ERASER_POINT)
             toggleHandwriting(show = true)
             setHandModeEnabled(false)
+            setEraserSizeVisible(true)
+        }
+        binding.toolLasso.setOnClickListener {
+            binding.inkView.setTool(InkCanvasView.Tool.LASSO)
+            toggleHandwriting(show = true)
+            setHandModeEnabled(false)
+            setEraserSizeVisible(false)
         }
         binding.toolCenter.setOnClickListener {
             toggleHandwriting(show = true)
-            centerInkCanvas()
+            binding.inkView.centerToPage()
         }
         binding.toolUndo.setOnClickListener { binding.inkView.undo() }
         binding.toolRedo.setOnClickListener { binding.inkView.redo() }
         binding.toolWidth.setOnClickListener { showWidthDialog() }
-        binding.toolDeleteSelection.setOnClickListener { binding.inkView.deleteSelection() }
+        binding.toolDeleteSelection.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("清空笔迹")
+                .setMessage("确认清空当前笔记里的全部手写内容？此操作可撤销。")
+                .setPositiveButton("清空") { _, _ ->
+                    binding.inkView.clearAllStrokes()
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
         binding.toolPaperStyle.setOnClickListener { showPaperStyleDialog() }
         binding.toolImport.setOnClickListener { showImportDialog() }
         binding.toolToggleMode.setOnClickListener { toggleHandwriting(show = !isHandwritingVisible) }
@@ -188,12 +222,24 @@ class NoteEditorActivity : AppCompatActivity() {
         binding.colorBlack.setOnClickListener { applyInkColor(0xFF111827.toInt()) }
         binding.colorBlue.setOnClickListener { applyInkColor(0xFF1565C0.toInt()) }
         binding.colorRed.setOnClickListener { applyInkColor(0xFFD32F2F.toInt()) }
+
+        binding.eraserSizeSlider.value = binding.inkView.getEraserRadiusDp().coerceIn(binding.eraserSizeSlider.valueFrom, binding.eraserSizeSlider.valueTo)
+        binding.eraserSizeSlider.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser) return@addOnChangeListener
+            binding.inkView.setEraserRadiusDp(value)
+        }
+        setEraserSizeVisible(false)
+    }
+
+    private fun setEraserSizeVisible(visible: Boolean) {
+        binding.eraserSizeRow.visibility = if (visible) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     private fun showSelectedPenLabel(brush: InkCanvasView.Brush) {
         binding.labelPenFountain.visibility = if (brush == InkCanvasView.Brush.FOUNTAIN) android.view.View.VISIBLE else android.view.View.GONE
         binding.labelPenMarker.visibility = if (brush == InkCanvasView.Brush.MARKER) android.view.View.VISIBLE else android.view.View.GONE
         binding.labelPenPencil.visibility = if (brush == InkCanvasView.Brush.PENCIL) android.view.View.VISIBLE else android.view.View.GONE
+        binding.labelPenHighlighter.visibility = if (brush == InkCanvasView.Brush.HIGHLIGHTER) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     private fun bindExistingNote() {
@@ -215,7 +261,7 @@ class NoteEditorActivity : AppCompatActivity() {
             if (!attachmentUri.isNullOrBlank()) {
                 toggleHandwriting(show = true)
                 if (attachmentMime == "application/pdf") {
-                    loadPdfPage(attachmentPageIndex)
+                    loadPdfAllPages()
                 } else if (attachmentMime?.startsWith("image/") == true) {
                     loadImage()
                 }
@@ -320,9 +366,7 @@ class NoteEditorActivity : AppCompatActivity() {
 
     private fun setHandModeEnabled(enabled: Boolean) {
         isHandModeEnabled = enabled
-        binding.inkZoomPan.setOneFingerPanEnabled(enabled)
-        binding.inkZoomPan.setTwoFingerPanEnabled(enabled)
-        binding.inkView.isEnabled = !enabled
+        binding.inkView.setInteractionMode(if (enabled) InkCanvasView.InteractionMode.PAN else InkCanvasView.InteractionMode.DRAW)
         binding.toolHand.alpha = if (enabled) 1f else 0.75f
     }
 
@@ -334,21 +378,11 @@ class NoteEditorActivity : AppCompatActivity() {
             .setSingleChoiceItems(items, currentIndex) { dialog, which ->
                 paperStyle = if (which == 0) 0 else 1
                 binding.inkView.setRuledEnabled(paperStyle != 0)
-                binding.inkZoomPan.invalidate()
                 scheduleAutoSave()
                 dialog.dismiss()
             }
             .setNegativeButton("取消", null)
             .show()
-    }
-
-    private fun centerInkCanvas() {
-        val content = binding.inkZoomPan.getChildAt(0) ?: return
-        content.post {
-            val cx = content.width * 0.5f
-            val cy = content.height * 0.5f
-            binding.inkZoomPan.centerOn(cx, cy)
-        }
     }
 
     private fun showImportDialog() {
@@ -383,12 +417,13 @@ class NoteEditorActivity : AppCompatActivity() {
         setHandModeEnabled(false)
 
         if (mime == "application/pdf") {
-            loadPdfPage(0)
+            paperStyle = 0
+            binding.inkView.setRuledEnabled(false)
+            loadPdfAllPages()
         } else if (mime?.startsWith("image/") == true) {
             loadImage()
         } else {
-            binding.attachmentImage.setImageDrawable(null)
-            binding.attachmentImage.visibility = android.view.View.GONE
+            binding.inkView.setAttachmentBitmap(null)
             Toast.makeText(this, "已导入文件（当前仅支持 PDF 直接渲染标注）", Toast.LENGTH_SHORT).show()
         }
         scheduleAutoSave()
@@ -401,11 +436,10 @@ class NoteEditorActivity : AppCompatActivity() {
             val stream = contentResolver.openInputStream(parsed) ?: return
             stream.use {
                 val bitmap = android.graphics.BitmapFactory.decodeStream(it)
-                binding.attachmentImage.setImageBitmap(bitmap)
-                binding.attachmentImage.visibility = android.view.View.VISIBLE
+                binding.inkView.setAttachmentBitmap(bitmap)
             }
         }.onFailure {
-            binding.attachmentImage.visibility = android.view.View.GONE
+            binding.inkView.setAttachmentBitmap(null)
             Toast.makeText(this, "图片加载失败", Toast.LENGTH_SHORT).show()
         }
     }
@@ -450,27 +484,39 @@ class NoteEditorActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun loadPdfPage(pageIndex: Int) {
+    private fun loadPdfAllPages() {
         val uri = attachmentUri ?: return
         val parsed = android.net.Uri.parse(uri)
         runCatching {
             openPdfIfNeeded(parsed)
-            val renderer = pdfRenderer ?: return
-            val safeIndex = pageIndex.coerceIn(0, renderer.pageCount - 1)
-            attachmentPageIndex = safeIndex
-            val page = renderer.openPage(safeIndex)
-            val targetWidth = min(1800, max(800, binding.root.width)).toInt()
-            val scale = targetWidth.toFloat() / page.width.toFloat()
-            val targetHeight = (page.height * scale).toInt()
-            val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.close()
-
-            binding.attachmentImage.setImageBitmap(bitmap)
-            binding.attachmentImage.visibility = android.view.View.VISIBLE
         }.onFailure {
-            Toast.makeText(this, "PDF 加载失败", Toast.LENGTH_SHORT).show()
-            binding.attachmentImage.visibility = android.view.View.GONE
+            Toast.makeText(this, "PDF 打开失败", Toast.LENGTH_SHORT).show()
+            binding.inkView.setAttachmentBitmap(null)
+            return
+        }
+        val renderer = pdfRenderer ?: return
+
+        binding.inkView.setAttachmentBitmaps(null)
+        lifecycleScope.launch {
+            val targetWidth = min(1400, max(900, binding.root.width)).toInt().coerceAtLeast(600)
+            for (i in 0 until renderer.pageCount) {
+                val bitmap = withContext(Dispatchers.Default) {
+                    runCatching {
+                        val page = renderer.openPage(i)
+                        val scale = targetWidth.toFloat() / page.width.toFloat()
+                        val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
+                        val bmp = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+                        page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        page.close()
+                        bmp
+                    }.getOrNull()
+                }
+                if (bitmap == null) continue
+                binding.inkView.appendAttachmentBitmap(bitmap)
+                if (i == 0) {
+                    binding.inkView.centerToPage()
+                }
+            }
         }
     }
 
@@ -495,7 +541,7 @@ class NoteEditorActivity : AppCompatActivity() {
         val renderer = pdfRenderer ?: return
         val next = (attachmentPageIndex + delta).coerceIn(0, renderer.pageCount - 1)
         if (next == attachmentPageIndex) return
-        loadPdfPage(next)
+        attachmentPageIndex = next
         scheduleAutoSave()
     }
 

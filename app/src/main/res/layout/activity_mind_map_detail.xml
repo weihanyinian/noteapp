@@ -30,8 +30,7 @@
                 android:id="@+id/titleInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textCapSentences"
-                android:maxLines="1" />
+                android:inputType="textCapSentences|textMultiLine" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.example.mymind.ui.mindmap.canvas.ZoomPanLayout
@@ -101,8 +100,6 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:maxLines="1"
                     android:text="中心主题"
                     android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
                     android:textColor="?attr/colorOnSurface" />

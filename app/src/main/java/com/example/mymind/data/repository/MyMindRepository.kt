@@ -231,6 +231,9 @@ class MyMindRepository(
     ): Long {
         val allNodes = mindNodeDao.getAllByMindMapId(mindMapId)
         val parent = allNodes.firstOrNull { it.id == parentNodeId } ?: return -1L
+        if (parent.isCollapsed) {
+            mindNodeDao.updateCollapsed(parentNodeId, false)
+        }
         val siblings = allNodes.filter { it.parentNodeId == parentNodeId }
         val nextOrder = (siblings.maxOfOrNull { it.branchOrder } ?: 0) + 1
         val newId = mindNodeDao.insert(
