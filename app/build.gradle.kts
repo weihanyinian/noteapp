@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.kapt")
 }
 
-buildDir = file("${System.getProperty("user.home")}/.mymind_build/app")
+buildDir = file("${System.getProperty("user.home")}/.mymind_build/app_alt")
 
 android {
     namespace = "com.example.mymind"

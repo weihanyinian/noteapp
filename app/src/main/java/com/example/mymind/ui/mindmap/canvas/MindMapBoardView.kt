@@ -47,6 +47,7 @@ class MindMapBoardView @JvmOverloads constructor(
     private val nodesById = LinkedHashMap<Long, MindNodeEntity>()
     private val notePreviewById = LinkedHashMap<Long, String>()
     private val positionByNodeId = LinkedHashMap<Long, Pair<Float, Float>>()
+    private val centerByNodeId = LinkedHashMap<Long, Pair<Float, Float>>()
     private var visibleNodeIds: Set<Long> = emptySet()
     private var layoutOffsetX: Float = 0f
     private var layoutOffsetY: Float = 0f
@@ -185,6 +186,7 @@ class MindMapBoardView @JvmOverloads constructor(
             val view = nodeViews.remove(removedId)
             if (view != null) removeView(view)
             positionByNodeId.remove(removedId)
+            centerByNodeId.remove(removedId)
         }
 
         val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth }
@@ -373,6 +375,7 @@ class MindMapBoardView @JvmOverloads constructor(
         val shouldFullLayout = nodes.none { it.id != root.id && (it.posX != null || it.posY != null) }
         if (shouldFullLayout) {
             positionByNodeId.clear()
+            centerByNodeId.clear()
         }
 
         if (!positionByNodeId.containsKey(root.id)) {
@@ -385,11 +388,6 @@ class MindMapBoardView @JvmOverloads constructor(
                 v.measure(measureSpec, measureSpec)
             }
         }
-
-        val childrenByParent = nodes
-            .filter { it.parentNodeId != null }
-            .groupBy { it.parentNodeId!! }
-            .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
 
         val maxW = nodeViews
             .filterValues { it.visibility == VISIBLE }
@@ -404,66 +402,33 @@ class MindMapBoardView @JvmOverloads constructor(
         val horizontalGap = maxW + (220f * density)
         val verticalGap = maxH + (110f * density)
         val rootGroupGap = verticalGap * 0.75f
-        val centerYByNodeId = HashMap<Long, Float>(nodes.size)
-        var cursorY = 0f
 
-        fun layoutCenterY(nodeId: Long): Float {
-            centerYByNodeId[nodeId]?.let { return it }
-            val node = nodesById[nodeId] ?: return cursorY.also { cursorY += verticalGap }
-            val children = childrenByParent[nodeId]
-                .orEmpty()
-                .filter { visibleNodeIds.contains(it.id) && !it.isDeleted }
-            val centerY = if (node.isCollapsed || children.isEmpty()) {
-                val y = cursorY
-                cursorY += verticalGap
-                y
-            } else if (node.isRoot) {
-                children.forEachIndexed { index, child ->
-                    layoutCenterY(child.id)
-                    if (index != children.lastIndex) {
-                        cursorY += rootGroupGap
-                    }
-                }
-                val first = centerYByNodeId[children.first().id] ?: 0f
-                val last = centerYByNodeId[children.last().id] ?: first
-                (first + last) * 0.5f
-            } else {
-                val first = layoutCenterY(children.first().id)
-                val last = layoutCenterY(children.last().id)
-                (first + last) * 0.5f
-            }
-            centerYByNodeId[nodeId] = centerY
-            return centerY
+        val nodeBoxById = HashMap<Long, MindMapLayoutEngine.NodeBox>(nodeViews.size)
+        nodeViews.forEach { (id, v) ->
+            if (v.visibility != VISIBLE) return@forEach
+            nodeBoxById[id] = MindMapLayoutEngine.NodeBox(
+                width = v.measuredWidth.toFloat(),
+                height = v.measuredHeight.toFloat()
+            )
         }
 
-        layoutCenterY(root.id)
+        val engine = MindMapLayoutEngine(
+            horizontalGapPx = horizontalGap.toFloat(),
+            verticalGapPx = verticalGap.toFloat(),
+            rootGroupGapPx = rootGroupGap
+        )
+        val layout = engine.compute(
+            nodes = nodes,
+            visibleNodeIds = visibleNodeIds,
+            nodeBoxById = nodeBoxById
+        )
 
-        var minY = Float.POSITIVE_INFINITY
-        var maxY = Float.NEGATIVE_INFINITY
-        centerYByNodeId.forEach { (id, y) ->
-            if (!visibleNodeIds.contains(id)) return@forEach
-            minY = min(minY, y)
-            maxY = max(maxY, y)
+        layout.positions.forEach { (id, pos) ->
+            if (positionByNodeId.containsKey(id) && !shouldFullLayout) return@forEach
+            positionByNodeId[id] = pos
         }
-        val shiftY = if (minY.isFinite() && maxY.isFinite()) -((minY + maxY) * 0.5f) else 0f
-
-        val depthSorted = nodes
-            .filter { visibleNodeIds.contains(it.id) && !it.isDeleted }
-            .sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
-
-        depthSorted.forEach { node ->
-            if (positionByNodeId.containsKey(node.id) && !shouldFullLayout) return@forEach
-
-            val view = nodeViews[node.id]
-            val w = view?.measuredWidth?.toFloat() ?: maxW.toFloat()
-            val h = view?.measuredHeight?.toFloat() ?: maxH.toFloat()
-
-            val depth = max(0, node.depth)
-            val centerX = depth * horizontalGap
-            val centerY = (centerYByNodeId[node.id] ?: 0f) + shiftY
-
-            positionByNodeId[node.id] = (centerX - w * 0.5f) to (centerY - h * 0.5f)
-        }
+        centerByNodeId.clear()
+        centerByNodeId.putAll(layout.centerByNodeId)
     }
 
     private fun attachInteractionHandler(view: MindMapNodeView, nodeId: Long) {
@@ -648,6 +613,7 @@ class MindMapBoardView @JvmOverloads constructor(
     private fun drawConnections(canvas: Canvas) {
         val density = resources.displayMetrics.density
         val handleBase = 92f * density
+        val renderer = SmoothCubicLineRenderer(handleBase)
         nodesById.values.forEach { node ->
             val parentId = node.parentNodeId ?: return@forEach
             if (!visibleNodeIds.contains(node.id) || !visibleNodeIds.contains(parentId)) return@forEach
@@ -673,14 +639,7 @@ class MindMapBoardView @JvmOverloads constructor(
             linePaint.color = (base and 0x00FFFFFF) or (0xCC shl 24)
 
             if (useCurvedLines) {
-                linePath.reset()
-                val dx = endX - startX
-                val sign = if (dx >= 0f) 1f else -1f
-                val handle = min(handleBase, abs(dx) * 0.5f)
-                val c1x = startX + sign * handle
-                val c2x = endX - sign * handle
-                linePath.moveTo(startX, startY)
-                linePath.cubicTo(c1x, startY, c2x, endY, endX, endY)
+                renderer.build(linePath, startX, startY, endX, endY)
                 canvas.drawPath(linePath, linePaint)
             } else {
                 canvas.drawLine(startX, startY, endX, endY, linePaint)
