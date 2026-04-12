@@ -65,6 +65,7 @@ class MindMapDetailActivity : AppCompatActivity() {
     private var selectedNodeId: Long? = null
     private var titleSaveJob: Job? = null
     private var isLassoEnabled: Boolean = false
+    private var hasFitOnce: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,24 +101,17 @@ class MindMapDetailActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        persistTitle()
     }
 
     private fun setupToolbar() {
         binding.topAppBar.setNavigationOnClickListener {
-            startActivity(
-                Intent(this, MainActivity::class.java)
-                    .putExtra(MainActivity.EXTRA_DESTINATION, MainActivity.DEST_MINDMAPS)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
             finish()
         }
         binding.topAppBar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.action_layout -> { viewModel.autoLayout(); true }
                 R.id.action_share -> { shareMindMap(); true }
                 R.id.action_undo -> { viewModel.undo(); true }
-                R.id.action_add_node -> { viewModel.addChildNode(selectedNodeId); true }
+                R.id.action_add_node -> { showAddChildNodeDialog(selectedNodeId); true }
                 R.id.action_style -> {
                     val node = getSelectedNode()
                     if (node != null) showStyleEntryDialog(node)
@@ -203,23 +197,17 @@ class MindMapDetailActivity : AppCompatActivity() {
 
     private fun setupActions() {
         binding.addNodeFab.setOnClickListener {
-            viewModel.addChildNode(selectedNodeId)
-            Toast.makeText(this, R.string.node_added, Toast.LENGTH_SHORT).show()
+            showAddChildNodeDialog(selectedNodeId)
         }
 
         binding.quickAddChildFab.setOnClickListener {
-            viewModel.addChildNode(selectedNodeId)
-            Toast.makeText(this, R.string.node_added, Toast.LENGTH_SHORT).show()
+            showAddChildNodeDialog(selectedNodeId)
         }
 
         binding.bottomAddChild.setOnClickListener {
-            val parentId = selectedNodeId ?: return@setOnClickListener
-            viewModel.addChildNode(parentId)
-            Toast.makeText(this, R.string.node_added, Toast.LENGTH_SHORT).show()
+            showAddChildNodeDialog(selectedNodeId)
         }
         binding.bottomUndo.setOnClickListener { viewModel.undo() }
-        binding.bottomLasso.setOnClickListener { setLassoEnabled(!isLassoEnabled) }
-        binding.bottomLayout.setOnClickListener { viewModel.autoLayout() }
         binding.bottomNote.setOnClickListener {
             val node = getSelectedNode() ?: return@setOnClickListener
             if (node.noteId != null) {
@@ -233,14 +221,6 @@ class MindMapDetailActivity : AppCompatActivity() {
             showEditNodeDialog(node)
         }
 
-        binding.titleInput.addTextChangedListener { editable ->
-            if (isApplyingTitleFromDatabase) return@addTextChangedListener
-            titleSaveJob?.cancel()
-            titleSaveJob = lifecycleScope.launch {
-                delay(500)
-                viewModel.saveTitle(editable?.toString().orEmpty().trim())
-            }
-        }
     }
 
     private fun observeData() {
@@ -248,9 +228,8 @@ class MindMapDetailActivity : AppCompatActivity() {
             if (data == null) return@observe
             val activeNodes = data.nodes.filter { !it.isDeleted }
 
-            isApplyingTitleFromDatabase = true
-            binding.titleInput.setText(data.mindMap.title)
-            isApplyingTitleFromDatabase = false
+            binding.topAppBar.title = data.mindMap.title
+
             nodeAdapter.submitList(activeNodes)
             latestNodes = activeNodes
             binding.mindMapBoard.submit(activeNodes, notePreviewById)
@@ -263,6 +242,12 @@ class MindMapDetailActivity : AppCompatActivity() {
             if (pending != null) {
                 focusNode(pending)
                 focusNodeId = null
+                hasFitOnce = true
+            } else if (!hasFitOnce) {
+                binding.root.post {
+                    binding.mindMapZoomPan.fitToScreen(animated = false)
+                    hasFitOnce = true
+                }
             }
         }
 
@@ -299,7 +284,7 @@ class MindMapDetailActivity : AppCompatActivity() {
     }
 
     private fun shareMindMap() {
-        val title = binding.titleInput.text?.toString().orEmpty().trim().ifBlank { "思维导图" }
+        val title = binding.topAppBar.title?.toString().orEmpty().trim().ifBlank { "思维导图" }
         val nodeTitles = latestNodes
             .sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
             .take(30)
@@ -395,10 +380,7 @@ class MindMapDetailActivity : AppCompatActivity() {
     private fun handleNodeMenuAction(action: String, node: MindNodeEntity) {
         when (action) {
             "重命名" -> showEditNodeDialog(node)
-            "添加子节点" -> {
-                viewModel.addChildNode(node.id)
-                Toast.makeText(this, R.string.node_added, Toast.LENGTH_SHORT).show()
-            }
+            "添加子节点" -> { showAddChildNodeDialog(node.id) }
             "样式修改" -> showStyleEntryDialog(node)
             "折叠", "展开" -> viewModel.toggleCollapse(node.id)
             "绑定笔记" -> showBindNoteDialog(node)
@@ -421,8 +403,6 @@ class MindMapDetailActivity : AppCompatActivity() {
     private fun setLassoEnabled(enabled: Boolean) {
         isLassoEnabled = enabled
         binding.mindMapBoard.setLassoModeEnabled(enabled)
-        binding.bottomLasso.isSelected = enabled
-        binding.bottomLasso.alpha = if (enabled) 1f else 0.7f
     }
 
     private fun showMoreMenu() {
@@ -431,10 +411,16 @@ class MindMapDetailActivity : AppCompatActivity() {
         val redoId = 1
         val nodeListId = 2
         val trashId = 3
+        val fitId = 4
+        val fixWindowId = 5
         popup.menu.add(0, redoId, 0, "重做")
         popup.menu.add(0, nodeListId, 1, "节点列表")
         popup.menu.add(0, trashId, 2, "移到回收站")
+        popup.menu.add(0, fitId, 3, "适配屏幕")
+        popup.menu.add(0, fixWindowId, 4, "固定窗口边界")
         popup.menu.findItem(redoId).isEnabled = viewModel.canRedo.value == true
+        popup.menu.findItem(fixWindowId).isCheckable = true
+        popup.menu.findItem(fixWindowId).isChecked = true
         popup.setOnMenuItemClickListener { mi ->
             when (mi.itemId) {
                 redoId -> {
@@ -453,6 +439,15 @@ class MindMapDetailActivity : AppCompatActivity() {
                             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     )
                     finish()
+                    true
+                }
+                fitId -> {
+                    binding.mindMapZoomPan.fitToScreen(animated = true)
+                    true
+                }
+                fixWindowId -> {
+                    mi.isChecked = !mi.isChecked
+                    binding.mindMapZoomPan.setWindowFixEnabled(mi.isChecked)
                     true
                 }
                 else -> false
@@ -522,6 +517,30 @@ class MindMapDetailActivity : AppCompatActivity() {
         return if (luminance < 0.55f) 0xFFFFFFFF.toInt() else 0xFF1F2937.toInt()
     }
 
+    private fun showAddChildNodeDialog(parentId: Long?) {
+        val editText = EditText(this).apply {
+            setText("")
+            setSingleLine(false)
+            setHorizontallyScrolling(false)
+            minLines = 3
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            requestFocus()
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("新增子节点")
+            .setView(editText)
+            .setPositiveButton("确定") { _, _ ->
+                val newContent = editText.text.toString().trim()
+                if (newContent.isNotBlank()) {
+                    viewModel.addChildNode(parentId, newContent)
+                } else {
+                    viewModel.addChildNode(parentId, "新节点")
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     private fun showEditNodeDialog(node: MindNodeEntity) {
         val editText = EditText(this).apply {
             setText(node.content)
@@ -543,11 +562,6 @@ class MindMapDetailActivity : AppCompatActivity() {
             }
             .setNegativeButton("取消", null)
             .show()
-    }
-
-    private fun persistTitle() {
-        if (isApplyingTitleFromDatabase) return
-        viewModel.saveTitle(binding.titleInput.text?.toString().orEmpty().trim())
     }
 
     private fun updateQuickAddChildFab() {

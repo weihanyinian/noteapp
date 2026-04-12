@@ -19,27 +19,14 @@
             app:navigationIcon="@android:drawable/ic_media_previous"
             app:title="@string/mind_map_detail_title" />
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="12dp"
-            android:hint="@string/mind_map_title_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/titleInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textCapSentences|textMultiLine" />
-        </com.google.android.material.textfield.TextInputLayout>
-
         <com.example.mymind.ui.mindmap.canvas.ZoomPanLayout
             android:id="@+id/mindMapZoomPan"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
             android:layout_weight="1"
-            android:background="@android:color/white">
+            android:background="@android:color/white"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <com.example.mymind.ui.mindmap.canvas.MindMapBoardView
                 android:id="@+id/mindMapBoard"
@@ -130,24 +117,6 @@
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/undo"
                 android:src="@drawable/ic_mm_undo"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/bottomLasso"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@android:color/transparent"
-                android:contentDescription="套索"
-                android:src="@drawable/ic_mm_lasso"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/bottomLayout"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@android:color/transparent"
-                android:contentDescription="布局"
-                android:src="@drawable/ic_mm_layout"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton

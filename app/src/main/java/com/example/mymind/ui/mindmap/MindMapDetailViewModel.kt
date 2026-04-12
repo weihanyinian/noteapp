@@ -66,11 +66,11 @@ class MindMapDetailViewModel(application: Application) : AndroidViewModel(applic
         _nodeAddedEvent.value = null
     }
 
-    fun addChildNode(parentNodeId: Long?) {
+    fun addChildNode(parentNodeId: Long?, content: String = "新节点") {
         val mindMapId = currentMindMapId ?: return
         viewModelScope.launch {
             val actualParentId = parentNodeId ?: repository.getRootNodeId(mindMapId) ?: return@launch
-            val newNodeId = repository.addChildNode(mindMapId = mindMapId, parentNodeId = actualParentId)
+            val newNodeId = repository.addChildNode(mindMapId = mindMapId, parentNodeId = actualParentId, content = content)
             push(AddNodeCommand(nodeId = newNodeId))
             _nodeAddedEvent.value = newNodeId
         }
