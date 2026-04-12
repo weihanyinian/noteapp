@@ -1,9 +1,11 @@
 package com.example.mymind.ui.mindmap.canvas
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.setPadding
@@ -22,46 +24,61 @@ class MindMapNodeView @JvmOverloads constructor(
 
     init {
         val density = resources.displayMetrics.density
-        radius = 16f * density
-        cardElevation = 0.75f * density
+        radius = 18f * density
+        cardElevation = 2f * density
         useCompatPadding = true
         isClickable = true
         isFocusable = true
-        strokeWidth = 0
-        strokeColor = 0x00000000
+        strokeWidth = (1f * density).toInt()
+        strokeColor = 0x10FFFFFF
+        rippleColor = ColorStateList.valueOf(0x14000000)
+        preventCornerOverlap = false
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.START
+            gravity = Gravity.CENTER_HORIZONTAL
+            minimumWidth = (90f * density).toInt()
             setPadding((14f * density).toInt())
+        }
+        val centeredParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
         }
 
         titleTextView = TextView(context).apply {
             textSize = 14f
-            gravity = Gravity.START
+            gravity = Gravity.CENTER
             setSingleLine(false)
             setHorizontallyScrolling(false)
-            maxWidth = (260f * density).toInt()
+            maxWidth = (170f * density).toInt()
+            letterSpacing = 0.01f
+            layoutParams = centeredParams
         }
 
         previewTextView = TextView(context).apply {
-            textSize = 12f
-            gravity = Gravity.START
-            alpha = 0.9f
+            textSize = 11f
+            gravity = Gravity.CENTER
+            alpha = 0.82f
             setSingleLine(false)
             setHorizontallyScrolling(false)
-            maxWidth = (260f * density).toInt()
+            maxWidth = (170f * density).toInt()
+            layoutParams = centeredParams
         }
 
         noteJumpButton = android.widget.ImageView(context).apply {
             setImageResource(com.example.mymind.R.drawable.ic_mm_note)
-            val p = (4f * density).toInt()
+            val p = (3f * density).toInt()
             setPadding(p, p, p, p)
-            val size = (24f * density).toInt()
+            val size = (20f * density).toInt()
             layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                topMargin = (6f * density).toInt()
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = (5f * density).toInt()
             }
-            background = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackgroundBorderless)).getDrawable(0)
+            val ta = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackgroundBorderless))
+            background = ta.getDrawable(0)
+            ta.recycle()
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -85,13 +102,15 @@ class MindMapNodeView @JvmOverloads constructor(
         if (node.isRoot) {
             titleTextView.textSize = node.textSizeSp ?: 18f
             titleTextView.setTypeface(null, Typeface.BOLD)
+            radius = 22f * resources.displayMetrics.density
         } else {
             titleTextView.textSize = node.textSizeSp ?: 14f
-            titleTextView.setTypeface(null, Typeface.NORMAL)
+            titleTextView.setTypeface(null, Typeface.BOLD)
+            radius = 18f * resources.displayMetrics.density
         }
-        cardElevation = if (isSelected) 1.5f * resources.displayMetrics.density else 0.75f * resources.displayMetrics.density
-        strokeWidth = if (isSelected) (2f * resources.displayMetrics.density).toInt() else 0
-        strokeColor = if (isSelected) (textColor and 0x00FFFFFF) or 0x66000000 else 0x00000000
+        cardElevation = if (isSelected) 5f * resources.displayMetrics.density else 2f * resources.displayMetrics.density
+        strokeWidth = if (isSelected) (2f * resources.displayMetrics.density).toInt() else (1f * resources.displayMetrics.density).toInt()
+        strokeColor = if (isSelected) (textColor and 0x00FFFFFF) or 0x44000000 else 0x10FFFFFF
 
         titleTextView.text = node.content
         if (node.noteId != null && !notePreview.isNullOrBlank()) {

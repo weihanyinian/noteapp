@@ -166,6 +166,24 @@ class MindMapBoardView @JvmOverloads constructor(
         return x to y
     }
 
+    fun getVisibleBounds(): RectF {
+        val out = RectF()
+        var hasAny = false
+        visibleNodeIds.forEach { id ->
+            val v = nodeViews[id] ?: return@forEach
+            if (v.visibility != VISIBLE) return@forEach
+            val rect = RectF(v.left.toFloat(), v.top.toFloat(), v.right.toFloat(), v.bottom.toFloat())
+            if (!hasAny) {
+                out.set(rect)
+                hasAny = true
+            } else {
+                out.union(rect)
+            }
+        }
+        if (!hasAny) out.setEmpty()
+        return out
+    }
+
     fun submit(nodes: List<MindNodeEntity>, previews: Map<Long, String>) {
         val visibleIds = computeVisibleNodeIds(nodes)
         visibleNodeIds = visibleIds
@@ -711,12 +729,12 @@ class MindMapBoardView @JvmOverloads constructor(
     }
 
     private fun resolveAutoBackground(node: MindNodeEntity, branchBaseColor: Int): Int {
-        if (node.isRoot) return 0xFF1E88E5.toInt()
+        if (node.isRoot) return 0xFF4A90E2.toInt()
         val depth = max(1, node.depth)
         val factor = when (depth) {
-            1 -> 0.22f
-            2 -> 0.12f
-            else -> 0.08f
+            1 -> 0.56f
+            2 -> 0.68f
+            else -> 0.76f
         }
         return mixWithWhite(branchBaseColor, factor)
     }

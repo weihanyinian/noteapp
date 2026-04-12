@@ -8,6 +8,8 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ViewConfiguration
 import android.widget.FrameLayout
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.abs
 
 /**
@@ -31,6 +33,7 @@ class ZoomPanLayout @JvmOverloads constructor(
 
     private var oneFingerPanEnabled: Boolean = true
     private var twoFingerPanEnabled: Boolean = true
+    private var windowFixEnabled: Boolean = true
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private var activePointerId: Int = MotionEvent.INVALID_POINTER_ID
@@ -63,7 +66,12 @@ class ZoomPanLayout @JvmOverloads constructor(
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            reset()
+            val child = getChildAt(0)
+            if (child is MindMapBoardView) {
+                fitToScreen(animated = true)
+            } else {
+                reset()
+            }
             return true
         }
     })
@@ -300,6 +308,58 @@ class ZoomPanLayout @JvmOverloads constructor(
         applyTransform(child)
     }
 
+    fun setWindowFixEnabled(enabled: Boolean) {
+        windowFixEnabled = enabled
+        val child = getChildAt(0) ?: return
+        applyTransform(child)
+    }
+
+    fun fitToScreen(animated: Boolean) {
+        val child = getChildAt(0) ?: return
+        if (width <= 0 || height <= 0) return
+
+        val bounds = (child as? MindMapBoardView)?.getVisibleBounds()
+        if (bounds == null || bounds.isEmpty) {
+            if (animated) reset() else {
+                scaleFactor = 1f
+                translationXInternal = 0f
+                translationYInternal = 0f
+                applyTransform(child)
+            }
+            return
+        }
+
+        val padding = 24f * resources.displayMetrics.density
+        val contentW = max(1f, bounds.width() + padding * 2f)
+        val contentH = max(1f, bounds.height() + padding * 2f)
+        val targetScale = min(width / contentW, height / contentH).coerceIn(minScale, maxScale)
+
+        val targetTx = width / 2f - bounds.centerX() * targetScale
+        val targetTy = height / 2f - bounds.centerY() * targetScale
+
+        if (!animated) {
+            scaleFactor = targetScale
+            translationXInternal = targetTx
+            translationYInternal = targetTy
+            applyTransform(child)
+            return
+        }
+
+        val startScale = scaleFactor
+        val startTx = translationXInternal
+        val startTy = translationYInternal
+        val animator = android.animation.ValueAnimator.ofFloat(0f, 1f)
+        animator.duration = 220
+        animator.addUpdateListener { a ->
+            val f = a.animatedValue as Float
+            scaleFactor = startScale + (targetScale - startScale) * f
+            translationXInternal = startTx + (targetTx - startTx) * f
+            translationYInternal = startTy + (targetTy - startTy) * f
+            applyTransform(child)
+        }
+        animator.start()
+    }
+
     fun setOneFingerPanEnabled(enabled: Boolean) {
         oneFingerPanEnabled = enabled
     }
@@ -318,10 +378,34 @@ class ZoomPanLayout @JvmOverloads constructor(
     }
 
     private fun applyTransform(child: android.view.View) {
+        if (windowFixEnabled) {
+            clampTransform(child)
+        }
         child.scaleX = scaleFactor
         child.scaleY = scaleFactor
         child.translationX = translationXInternal
         child.translationY = translationYInternal
         onTransformChanged?.invoke()
+    }
+
+    private fun clampTransform(child: android.view.View) {
+        if (width <= 0 || height <= 0) return
+        val margin = 48f * resources.displayMetrics.density
+        val scaledW = child.measuredWidth * scaleFactor
+        val scaledH = child.measuredHeight * scaleFactor
+
+        val tx = if (scaledW <= width) {
+            (width - scaledW) * 0.5f
+        } else {
+            translationXInternal.coerceIn(width - scaledW - margin, margin)
+        }
+        val ty = if (scaledH <= height) {
+            (height - scaledH) * 0.5f
+        } else {
+            translationYInternal.coerceIn(height - scaledH - margin, margin)
+        }
+
+        translationXInternal = tx
+        translationYInternal = ty
     }
 }
