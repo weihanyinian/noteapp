@@ -2,16 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_share"
-        android:icon="@android:drawable/ic_menu_share"
-        android:title="分享"
-        app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_add_node"
-        android:icon="@drawable/ic_mm_add"
-        android:title="添加"
-        app:showAsAction="always" />
-    <item
         android:id="@+id/action_more"
         android:icon="@drawable/ic_mm_more"
         android:title="更多"

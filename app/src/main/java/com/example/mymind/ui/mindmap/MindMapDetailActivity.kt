@@ -109,8 +109,6 @@ class MindMapDetailActivity : AppCompatActivity() {
         }
         binding.topAppBar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.action_share -> { shareMindMap(); true }
-                R.id.action_add_node -> { showAddChildNodeDialog(selectedNodeId); true }
                 R.id.action_more -> { showMoreMenu(); true }
                 else -> false
             }
@@ -401,29 +399,10 @@ class MindMapDetailActivity : AppCompatActivity() {
     private fun showMoreMenu() {
         val anchor: View = binding.topAppBar
         val popup = PopupMenu(this, anchor, Gravity.END)
-        val redoId = 1
-        val nodeListId = 2
-        val trashId = 3
-        val fitId = 4
-        val fixWindowId = 5
-        popup.menu.add(0, redoId, 0, "重做")
-        popup.menu.add(0, nodeListId, 1, "节点列表")
-        popup.menu.add(0, trashId, 2, "移到回收站")
-        popup.menu.add(0, fitId, 3, "适配屏幕")
-        popup.menu.add(0, fixWindowId, 4, "固定窗口边界")
-        popup.menu.findItem(redoId).isEnabled = viewModel.canRedo.value == true
-        popup.menu.findItem(fixWindowId).isCheckable = true
-        popup.menu.findItem(fixWindowId).isChecked = true
+        val trashId = 1
+        popup.menu.add(0, trashId, 0, "移到回收站")
         popup.setOnMenuItemClickListener { mi ->
             when (mi.itemId) {
-                redoId -> {
-                    viewModel.redo()
-                    true
-                }
-                nodeListId -> {
-                    showNodeListSheet()
-                    true
-                }
                 trashId -> {
                     viewModel.trashMindMap(mindMapId)
                     startActivity(
@@ -432,15 +411,6 @@ class MindMapDetailActivity : AppCompatActivity() {
                             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     )
                     finish()
-                    true
-                }
-                fitId -> {
-                    binding.mindMapZoomPan.fitToScreen(animated = true)
-                    true
-                }
-                fixWindowId -> {
-                    mi.isChecked = !mi.isChecked
-                    binding.mindMapZoomPan.setWindowFixEnabled(mi.isChecked)
                     true
                 }
                 else -> false

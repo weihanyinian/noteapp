@@ -8,7 +8,9 @@ import com.example.mymind.data.local.entity.MindMapEntity
 import com.example.mymind.data.local.entity.MindNodeEntity
 import com.example.mymind.data.local.entity.NoteEntity
 // MindMapWithNodes 通过全限定名在 observeMindMapWithNodes 中直接引用
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sin
 
 class MyMindRepository(
     private val noteDao: NoteDao,
@@ -328,55 +330,76 @@ class MyMindRepository(
     /**
      * 自动布局（为没有坐标的节点生成坐标并写回数据库）。
      *
-     * 默认布局方向为“从左到右”：x 轴按层级递增，y 轴按叶子序分布。
-     * 这样新增节点时会自然向右扩展，而不是默认堆到下方。
+     * 使用接近 XMind 的辐射布局：
+     * - 根节点位于中心
+     * - 一级分支沿圆周分布
+     * - 更深层节点沿各自主分支方向继续延展
      */
     suspend fun autoLayout(mindMapId: Long): Map<Long, Pair<Float?, Float?>> {
         val nodes = mindNodeDao.getByMindMapId(mindMapId)
         if (nodes.isEmpty()) return emptyMap()
         val root = nodes.firstOrNull { it.isRoot } ?: nodes.minByOrNull { it.depth } ?: return emptyMap()
 
-        val nodesById = nodes.associateBy { it.id }
         val childrenByParent = nodes
             .filter { it.parentNodeId != null }
             .groupBy { it.parentNodeId!! }
             .mapValues { (_, list) -> list.sortedWith(compareBy<MindNodeEntity> { it.branchOrder }.thenBy { it.id }) }
 
-        val verticalGap = 220f
-        val horizontalGap = 420f
+        val verticalGap = 160f
+        val horizontalGap = 300f
         val nodeWidth = 200f
         val nodeHeight = 92f
 
-        val centerYById = HashMap<Long, Float>()
-        var cursorY = 0f
+        val positions = LinkedHashMap<Long, Pair<Float, Float>>()
 
-        fun layoutCenterY(nodeId: Long): Float {
-            centerYById[nodeId]?.let { return it }
-            val node = nodesById[nodeId] ?: return cursorY.also { cursorY += verticalGap }
-            val children = childrenByParent[nodeId].orEmpty()
-            val centerY = if (node.isCollapsed || children.isEmpty()) {
-                val y = cursorY
-                cursorY += verticalGap
-                y
-            } else {
-                val first = layoutCenterY(children.first().id)
-                val last = layoutCenterY(children.last().id)
-                (first + last) * 0.5f
-            }
-            centerYById[nodeId] = centerY
-            return centerY
+        fun putNode(nodeId: Long, centerX: Float, centerY: Float) {
+            positions[nodeId] = (centerX - nodeWidth * 0.5f) to (centerY - nodeHeight * 0.5f)
         }
 
-        layoutCenterY(root.id)
-        val rootCenterY = centerYById[root.id] ?: 0f
+        fun layoutBranch(node: MindNodeEntity, centerX: Float, centerY: Float, angleDeg: Float, depth: Int) {
+            putNode(node.id, centerX, centerY)
+            if (node.isCollapsed) return
+            val children = childrenByParent[node.id].orEmpty()
+            if (children.isEmpty()) return
 
-        val positions = LinkedHashMap<Long, Pair<Float, Float>>()
-        val sorted = nodes.sortedWith(compareBy<MindNodeEntity> { it.depth }.thenBy { it.branchOrder }.thenBy { it.id })
-        sorted.forEach { node ->
-            val depth = max(0, node.depth)
-            val centerX = depth * horizontalGap
-            val centerY = (centerYById[node.id] ?: rootCenterY) - rootCenterY
-            positions[node.id] = (centerX - nodeWidth * 0.5f) to (centerY - nodeHeight * 0.5f)
+            val angleRad = Math.toRadians(angleDeg.toDouble())
+            val ux = cos(angleRad).toFloat()
+            val uy = sin(angleRad).toFloat()
+            val nx = -uy
+            val ny = ux
+            val forwardGap = when (depth) {
+                1 -> horizontalGap * 0.82f
+                2 -> horizontalGap * 0.60f
+                else -> horizontalGap * 0.50f
+            }
+            val stackGap = when (depth) {
+                1 -> verticalGap * 0.86f
+                2 -> verticalGap * 0.72f
+                else -> verticalGap * 0.60f
+            }
+            val centerIndex = (children.size - 1) * 0.5f
+            children.forEachIndexed { index, child ->
+                val offset = (index - centerIndex) * stackGap
+                val childCenterX = centerX + ux * forwardGap + nx * offset
+                val childCenterY = centerY + uy * forwardGap + ny * offset
+                layoutBranch(child, childCenterX, childCenterY, angleDeg, depth + 1)
+            }
+        }
+
+        putNode(root.id, 0f, 0f)
+        val firstLevel = childrenByParent[root.id].orEmpty()
+        if (firstLevel.isNotEmpty()) {
+            val startAngle = -70f
+            val sweepAngle = 320f
+            val primaryRadius = 260f
+            val angleStep = if (firstLevel.size == 1) 0f else sweepAngle / (firstLevel.size - 1).coerceAtLeast(1)
+            firstLevel.forEachIndexed { index, child ->
+                val angle = if (firstLevel.size == 1) 0f else startAngle + angleStep * index
+                val rad = Math.toRadians(angle.toDouble())
+                val cx = cos(rad).toFloat() * primaryRadius
+                val cy = sin(rad).toFloat() * primaryRadius
+                layoutBranch(child, cx, cy, angle, 1)
+            }
         }
 
         positions.forEach { (id, pos) -> mindNodeDao.updatePosition(id, pos.first, pos.second) }

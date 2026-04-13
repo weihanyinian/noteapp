@@ -14,12 +14,20 @@ internal class SmoothCubicLineRenderer(
     override fun build(path: Path, startX: Float, startY: Float, endX: Float, endY: Float) {
         path.reset()
         val dx = endX - startX
-        val sign = if (dx >= 0f) 1f else -1f
-        val handle = min(baseHandle, abs(dx) * 0.5f)
-        val c1x = startX + sign * handle
-        val c2x = endX - sign * handle
         path.moveTo(startX, startY)
-        path.cubicTo(c1x, startY, c2x, endY, endX, endY)
+        val dy = endY - startY
+        if (abs(dx) >= abs(dy)) {
+            val sign = if (dx >= 0f) 1f else -1f
+            val handle = min(baseHandle, abs(dx) * 0.5f)
+            val c1x = startX + sign * handle
+            val c2x = endX - sign * handle
+            path.cubicTo(c1x, startY, c2x, endY, endX, endY)
+        } else {
+            val sign = if (dy >= 0f) 1f else -1f
+            val handle = min(baseHandle, abs(dy) * 0.5f)
+            val c1y = startY + sign * handle
+            val c2y = endY - sign * handle
+            path.cubicTo(startX, c1y, endX, c2y, endX, endY)
+        }
     }
 }
-

@@ -81,6 +81,10 @@ class MindMapBoardView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         color = 0xAA546E7A.toInt()
     }
+    private val summaryCardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = 0xFFF5F2EB.toInt()
+    }
     private val summaryTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xCC37474F.toInt()
         textSize = 12f * resources.displayMetrics.scaledDensity
@@ -578,45 +582,38 @@ class MindMapBoardView @JvmOverloads constructor(
     override fun dispatchDraw(canvas: Canvas) {
         drawConnections(canvas)
         super.dispatchDraw(canvas)
-        drawCollapsedSummaryHints(canvas)
+        drawOverviewSummary(canvas)
         drawSelectionOverlay(canvas)
         if (isLassoModeEnabled && isLassoDrawing) {
             canvas.drawPath(lassoPath, lassoPaint)
         }
     }
 
-    private fun drawCollapsedSummaryHints(canvas: Canvas) {
+    private fun drawOverviewSummary(canvas: Canvas) {
+        val visibleViews = visibleNodeIds.mapNotNull { nodeViews[it] }.filter { it.visibility == VISIBLE }
+        if (visibleViews.size < 4) return
         val density = resources.displayMetrics.density
-        val gap = 18f * density
-        val braceW = 14f * density
+        val rightMost = visibleViews.maxByOrNull { it.right } ?: return
+        val top = visibleViews.minOf { it.top }.toFloat() + 8f * density
+        val bottom = visibleViews.maxOf { it.bottom }.toFloat() - 8f * density
+        val bracketX = rightMost.right + 34f * density
+        val braceW = 18f * density
 
-        val childrenByParent = nodesById.values
-            .filter { it.parentNodeId != null }
-            .groupBy { it.parentNodeId!! }
+        linePath.reset()
+        linePath.moveTo(bracketX + braceW, top)
+        linePath.quadTo(bracketX + 4f * density, top, bracketX + 4f * density, top + 24f * density)
+        linePath.lineTo(bracketX + 4f * density, bottom - 24f * density)
+        linePath.quadTo(bracketX + 4f * density, bottom, bracketX + braceW, bottom)
+        canvas.drawPath(linePath, summaryBracketPaint)
 
-        nodesById.values.forEach { node ->
-            if (!node.isCollapsed) return@forEach
-            if (!visibleNodeIds.contains(node.id)) return@forEach
-            val hasChildren = childrenByParent[node.id].orEmpty().any { !it.isDeleted }
-            if (!hasChildren) return@forEach
-            val view = nodeViews[node.id] ?: return@forEach
-            if (view.visibility != VISIBLE) return@forEach
-
-            val x = view.x + view.width + gap
-            val top = view.y + 6f * density
-            val bottom = view.y + view.height - 6f * density
-            val mid = (top + bottom) * 0.5f
-
-            linePath.reset()
-            linePath.moveTo(x + braceW, top)
-            linePath.lineTo(x, top)
-            linePath.lineTo(x, bottom)
-            linePath.lineTo(x + braceW, bottom)
-            canvas.drawPath(linePath, summaryBracketPaint)
-
-            val label = "概要"
-            canvas.drawText(label, x + braceW + 10f * density, mid + summaryTextPaint.textSize * 0.35f, summaryTextPaint)
-        }
+        val chipW = 58f * density
+        val chipH = 30f * density
+        val chipLeft = bracketX + braceW + 12f * density
+        val chipTop = ((top + bottom) * 0.5f) - chipH * 0.5f
+        val chipRect = RectF(chipLeft, chipTop, chipLeft + chipW, chipTop + chipH)
+        canvas.drawRoundRect(chipRect, 15f * density, 15f * density, summaryCardPaint)
+        val baseline = chipRect.centerY() - (summaryTextPaint.descent() + summaryTextPaint.ascent()) / 2f
+        canvas.drawText("概要", chipRect.centerX() - summaryTextPaint.measureText("概要") * 0.5f, baseline, summaryTextPaint)
     }
 
     private fun drawSelectionOverlay(canvas: Canvas) {
@@ -643,15 +640,12 @@ class MindMapBoardView @JvmOverloads constructor(
             val ccx = childView.x + childView.width / 2f
             val ccy = childView.y + childView.height / 2f
 
-            val startX: Float
-            val startY: Float
-            val endX: Float
-            val endY: Float
-            val childOnRight = ccx >= pcx
-            startX = if (childOnRight) parentView.x + parentView.width else parentView.x
-            startY = pcy
-            endX = if (childOnRight) childView.x else childView.x + childView.width
-            endY = ccy
+            val start = edgeAnchor(parentView, ccx, ccy)
+            val end = edgeAnchor(childView, pcx, pcy)
+            val startX = start.first
+            val startY = start.second
+            val endX = end.first
+            val endY = end.second
 
             val base = branchBaseColorByNodeId[node.id] ?: 0xFF64B5F6.toInt()
             linePaint.color = (base and 0x00FFFFFF) or (0xCC shl 24)
@@ -662,6 +656,18 @@ class MindMapBoardView @JvmOverloads constructor(
             } else {
                 canvas.drawLine(startX, startY, endX, endY, linePaint)
             }
+        }
+    }
+
+    private fun edgeAnchor(view: MindMapNodeView, targetX: Float, targetY: Float): Pair<Float, Float> {
+        val cx = view.x + view.width / 2f
+        val cy = view.y + view.height / 2f
+        val dx = targetX - cx
+        val dy = targetY - cy
+        return if (abs(dx) >= abs(dy)) {
+            if (dx >= 0f) (view.x + view.width) to cy else view.x to cy
+        } else {
+            cx to if (dy >= 0f) (view.y + view.height) else view.y
         }
     }
 
@@ -729,12 +735,12 @@ class MindMapBoardView @JvmOverloads constructor(
     }
 
     private fun resolveAutoBackground(node: MindNodeEntity, branchBaseColor: Int): Int {
-        if (node.isRoot) return 0xFF4A90E2.toInt()
+        if (node.isRoot) return 0xFF2F2F33.toInt()
         val depth = max(1, node.depth)
         val factor = when (depth) {
-            1 -> 0.56f
-            2 -> 0.68f
-            else -> 0.76f
+            1 -> 0.18f
+            2 -> 0.70f
+            else -> 0.80f
         }
         return mixWithWhite(branchBaseColor, factor)
     }
