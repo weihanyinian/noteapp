@@ -110,13 +110,7 @@ class MindMapDetailActivity : AppCompatActivity() {
         binding.topAppBar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_share -> { shareMindMap(); true }
-                R.id.action_undo -> { viewModel.undo(); true }
                 R.id.action_add_node -> { showAddChildNodeDialog(selectedNodeId); true }
-                R.id.action_style -> {
-                    val node = getSelectedNode()
-                    if (node != null) showStyleEntryDialog(node)
-                    true
-                }
                 R.id.action_more -> { showMoreMenu(); true }
                 else -> false
             }
@@ -254,7 +248,6 @@ class MindMapDetailActivity : AppCompatActivity() {
         viewModel.canUndo.observe(this) { canUndo ->
             binding.bottomUndo.isEnabled = canUndo
             binding.bottomUndo.alpha = if (canUndo) 1f else 0.35f
-            binding.topAppBar.menu.findItem(R.id.action_undo)?.isEnabled = canUndo
         }
     }
 

@@ -7,19 +7,9 @@
         android:title="分享"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_undo"
-        android:icon="@drawable/ic_mm_undo"
-        android:title="撤销"
-        app:showAsAction="always" />
-    <item
         android:id="@+id/action_add_node"
         android:icon="@drawable/ic_mm_add"
         android:title="添加"
-        app:showAsAction="always" />
-    <item
-        android:id="@+id/action_style"
-        android:icon="@drawable/ic_mm_style"
-        android:title="样式"
         app:showAsAction="always" />
     <item
         android:id="@+id/action_more"
